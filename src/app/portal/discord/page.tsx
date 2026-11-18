@@ -27,7 +27,7 @@ async function DiscordBot() {
       <div className="card card-gold space-y-4 p-6">
         <h3 className="font-display text-xl uppercase text-navy-ink">1. Register slash commands</h3>
         <p className="text-muted-foreground">
-          Adds <code>/claim</code>, <code>/close</code>, <code>/close-request</code>, <code>/rename</code> and <code>/support-panel</code> to the server.
+          Adds <code>/claim</code>, <code>/close</code>, <code>/close-request</code>, <code>/rename</code>, <code>/support-panel</code>, <code>/promote</code> and <code>/infraction</code> to the server.
           Run this once (and again if commands are ever changed). It&apos;s safe to click more than once.
         </p>
         <RegisterCommands />

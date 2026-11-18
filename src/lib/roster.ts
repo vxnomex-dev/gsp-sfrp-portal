@@ -232,6 +232,34 @@ export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> 
   }
 }
 
+export function invalidateRosterCache() {
+  cache = null;
+}
+
+/** Moves one member to the lowest free callsign (their own number counts as free). Returns old and new. */
+export async function moveToLowestFreeCallsign(userId: string): Promise<{ old: number | null; next: number | null }> {
+  const mine = await queryOne<{ callsign: number }>(`SELECT callsign FROM roster_callsigns WHERE user_id=$1`, [userId]);
+  const taken = new Set(
+    (await query<{ callsign: number }>(`SELECT callsign FROM roster_callsigns WHERE user_id <> $1`, [userId])).map((r) =>
+      Number(r.callsign),
+    ),
+  );
+  const next = freeCallsigns(taken).next();
+  if (next.done) return { old: mine ? Number(mine.callsign) : null, next: mine ? Number(mine.callsign) : null };
+  await query(
+    `INSERT INTO roster_callsigns (user_id, callsign) VALUES ($1,$2)
+     ON CONFLICT (user_id) DO UPDATE SET callsign=EXCLUDED.callsign, assigned_at=now()`,
+    [userId, next.value],
+  );
+  cache = null;
+  return { old: mine ? Number(mine.callsign) : null, next: next.value };
+}
+
+export async function releaseCallsign(userId: string) {
+  await query(`DELETE FROM roster_callsigns WHERE user_id=$1`, [userId]);
+  cache = null;
+}
+
 /** Runs a normal sync if the last one was more than 10 minutes ago (called when the roster is viewed). */
 export async function syncIfStale() {
   if (!env.discord.botToken) return;

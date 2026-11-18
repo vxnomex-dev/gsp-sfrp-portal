@@ -25,6 +25,17 @@ import {
   type Member,
   type TicketKind,
 } from "@/lib/tickets";
+import {
+  INFRACTION_TYPES,
+  SUSPENSION_MODAL_PREFIX,
+  canInfract,
+  canPromote,
+  runInfraction,
+  runPromotion,
+  runVoid,
+  suspensionModal,
+  type InfractionKind,
+} from "@/lib/discipline";
 import { resolveAccess } from "@/lib/permissions";
 import { appRef } from "@/lib/forms";
 
@@ -38,6 +49,8 @@ export const maxDuration = 30;
 
 type ModalRow = { components?: { custom_id: string; value: string }[]; component?: { custom_id: string; value: string } };
 
+type Option = { name: string; type?: number; value?: string | number; options?: Option[] };
+
 type Interaction = {
   type: number;
   token: string;
@@ -47,8 +60,9 @@ type Interaction = {
     name?: string;
     custom_id?: string;
     values?: string[];
-    options?: { name: string; value: string }[];
+    options?: Option[];
     components?: ModalRow[];
+    resolved?: { users?: Record<string, { id: string; username: string; bot?: boolean }> };
   };
   member?: Member;
 };
@@ -66,7 +80,16 @@ function modalValue(i: Interaction, id: string): string {
   return "";
 }
 
-const option = (i: Interaction, name: string) => i.data?.options?.find((o) => o.name === name)?.value ?? null;
+const option = (i: Interaction, name: string) => {
+  const v = i.data?.options?.find((o) => o.name === name)?.value;
+  return v === undefined ? null : String(v);
+};
+const subOptions = (i: Interaction) => i.data?.options?.[0];
+const subOption = (i: Interaction, name: string) => {
+  const v = subOptions(i)?.options?.find((o) => o.name === name)?.value;
+  return v === undefined ? null : String(v);
+};
+const deferPrivate = () => json({ type: 5, data: { flags: 64 } });
 
 /* ---------------- Cadet applications ---------------- */
 
@@ -183,6 +206,50 @@ export async function POST(req: NextRequest) {
           return json(await renameTicket(channelId, i.member, option(i, "name") ?? ""));
         case "support-panel":
           return json(await postPanel(channelId));
+
+        case "promote": {
+          if (!canPromote(i.member)) {
+            return ephemeral("❌ You don't have permission to use `/promote`. Only Command, High Command and the Office of the Colonel can promote.");
+          }
+          const userId = option(i, "user")!;
+          const newRoleId = option(i, "new_rank")!;
+          const oldRoleId = option(i, "old_rank")!;
+          if (i.data?.resolved?.users?.[userId]?.bot) return ephemeral("❌ You can't promote a bot.");
+          if (newRoleId === oldRoleId) return ephemeral("❌ The new rank and old rank are the same role.");
+          const member = i.member;
+          after(() =>
+            runPromotion({ token: i.token, commandChannelId: channelId, issuer: member, userId, oldRoleId, newRoleId, reason: option(i, "reason") ?? "" }),
+          );
+          return deferPrivate();
+        }
+
+        case "infraction": {
+          if (!canInfract(i.member)) {
+            return ephemeral("❌ You don't have permission to issue or void infractions. Only the Professional Standards Bureau and the Office of the Colonel can.");
+          }
+          const sub = subOptions(i)?.name;
+          const member = i.member;
+          if (sub === "issue") {
+            const userId = subOption(i, "user")!;
+            const kind = subOption(i, "type") as InfractionKind;
+            const reason = subOption(i, "reason") ?? "";
+            if (!INFRACTION_TYPES[kind]) return ephemeral("❌ Unknown infraction type.");
+            if (i.data?.resolved?.users?.[userId]?.bot) return ephemeral("❌ You can't infract a bot.");
+            if (userId === member.user.id) return ephemeral("❌ You can't infract yourself.");
+            if (kind === "suspension") return json(suspensionModal(userId, kind, reason));
+            const userName = i.data?.resolved?.users?.[userId]?.username ?? "";
+            after(() =>
+              runInfraction({ token: i.token, commandChannelId: channelId, issuer: member, userId, userName, kind, reason, duration: null }),
+            );
+            return deferPrivate();
+          }
+          if (sub === "void") {
+            const caseId = Number(subOption(i, "case_id"));
+            after(() => runVoid({ token: i.token, issuer: member, caseId, reason: subOption(i, "reason") }));
+            return deferPrivate();
+          }
+          return ephemeral("Unknown subcommand.");
+        }
         default:
           return ephemeral("Unknown command.");
       }
@@ -191,6 +258,30 @@ export async function POST(req: NextRequest) {
     // Cadet application buttons / pop-up
     if ([ACCEPT_PREFIX, DENY_PREFIX, DENY_MODAL_PREFIX].some((p) => cid.startsWith(p))) {
       return handleApplication(i, cid);
+    }
+
+    // Suspension details submitted → issue the infraction
+    if (i.type === 5 && cid.startsWith(SUSPENSION_MODAL_PREFIX)) {
+      if (!canInfract(i.member)) return ephemeral("❌ You don't have permission to issue infractions.");
+      const [userId, kind] = cid.slice(SUSPENSION_MODAL_PREFIX.length).split(":");
+      const duration = modalValue(i, "duration").trim();
+      const reason = modalValue(i, "reason").trim();
+      if (!duration) return ephemeral("❌ A suspension needs a duration.");
+      if (!reason) return ephemeral("❌ A reason is required.");
+      const member = i.member;
+      after(() =>
+        runInfraction({
+          token: i.token,
+          commandChannelId: channelId,
+          issuer: member,
+          userId,
+          userName: "",
+          kind: (kind as InfractionKind) || "suspension",
+          reason,
+          duration,
+        }),
+      );
+      return deferPrivate();
     }
 
     // Support panel: support type picked → show the "What's up?" pop-up

@@ -245,9 +245,13 @@ export async function registerDiscordCommands(): Promise<FormState> {
   await requirePermission("content");
   const { registerGuildCommands } = await import("@/lib/discord-bot");
   const { SLASH_COMMANDS } = await import("@/lib/tickets");
+  const { DISCIPLINE_COMMANDS } = await import("@/lib/discipline");
   try {
-    const result = await registerGuildCommands(SLASH_COMMANDS);
-    return { ok: true, message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /rename, /support-panel.` };
+    const result = await registerGuildCommands([...SLASH_COMMANDS, ...DISCIPLINE_COMMANDS]);
+    return {
+      ok: true,
+      message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /rename, /support-panel, /promote, /infraction.`,
+    };
   } catch (e) {
     return { message: `Discord rejected the request: ${(e as Error).message}` };
   }

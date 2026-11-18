@@ -87,6 +87,41 @@ export const SCHEMA_SQL = [
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS channel_name TEXT`,
+  `CREATE TABLE IF NOT EXISTS promotions (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    old_role_id TEXT NOT NULL,
+    new_role_id TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    old_callsign INTEGER,
+    new_callsign INTEGER,
+    issuer_id TEXT NOT NULL,
+    issuer_name TEXT NOT NULL,
+    channel_id TEXT,
+    message_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS infractions (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    duration TEXT,
+    issuer_id TEXT NOT NULL,
+    issuer_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    voided_by_id TEXT,
+    voided_by_name TEXT,
+    void_reason TEXT,
+    voided_at TIMESTAMPTZ,
+    removed_roles JSONB,
+    channel_id TEXT,
+    message_id TEXT,
+    thread_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS infractions_user_idx ON infractions (user_id)`,
   `CREATE INDEX IF NOT EXISTS tickets_open_idx ON tickets (opener_id, kind, status)`,
 ];
 

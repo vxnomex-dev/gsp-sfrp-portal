@@ -117,6 +117,19 @@ Decisions made in the portal update the Discord message too.
 - Ranks are detected from role names, or pick them in the portal. Sections/ranges live in `src/lib/roster.ts`.
 - Needs **Server Members Intent** (Developer Portal → Bot).
 
+## Promotions & infractions (Discord)
+
+- `/promote user reason new_rank old_rank` — Command, High Command, Office of the Colonel. Adds the new rank role,
+  removes the old one, gives the member the lowest free callsign, updates their nickname and the roster, and posts
+  the promotion (with the new callsign).
+- `/infraction issue user reason type` — Professional Standards Bureau and Office of the Colonel. Types: termination,
+  strike, warning, inactivity notice, suspension (asks for a duration), demotion. Posts the notice, opens an evidence
+  thread pinging the issuer, and DMs the member. Termination removes every role except Community Member and frees the
+  callsign.
+- `/infraction void case_id [reason]` — marks the case voided, updates the original notice, DMs the member and, for a
+  termination, gives their roles back.
+- Channels / roles are set in `DISCIPLINE` in `src/lib/discipline.ts` (empty channel = the channel the command was used in).
+
 ## Webhooks
 
 New applications and reports are posted to Discord as **Components V2** messages (container + sections, not

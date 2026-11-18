@@ -185,7 +185,7 @@ export async function editInteractionResponse(interactionToken: string, body: Re
 
 /* ---------------- Members & roles (roster) ---------------- */
 
-export type GuildRole = { id: string; name: string; position: number; color: number };
+export type GuildRole = { id: string; name: string; position: number; color: number; managed?: boolean };
 export type GuildMember = {
   user: { id: string; username: string; global_name?: string | null; avatar?: string | null; bot?: boolean };
   nick?: string | null;
@@ -207,6 +207,26 @@ export async function fetchGuildMembers(): Promise<GuildMember[]> {
     after = page[page.length - 1].user.id;
   }
   return all;
+}
+
+export function fetchGuildMember(userId: string) {
+  return bot<GuildMember>(`/guilds/${env.discord.guildId}/members/${userId}`);
+}
+
+export function addMemberRole(userId: string, roleId: string) {
+  return bot(`/guilds/${env.discord.guildId}/members/${userId}/roles/${roleId}`, { method: "PUT" });
+}
+
+export function removeMemberRole(userId: string, roleId: string) {
+  return bot(`/guilds/${env.discord.guildId}/members/${userId}/roles/${roleId}`, { method: "DELETE" });
+}
+
+/** Starts a public thread on a message (used for infraction evidence). */
+export function startThreadFromMessage(channelId: string, messageId: string, name: string) {
+  return bot<{ id: string }>(`/channels/${channelId}/messages/${messageId}/threads`, {
+    method: "POST",
+    body: { name: name.slice(0, 100), auto_archive_duration: 10080 },
+  });
 }
 
 /** Sets a member's server nickname. Retries once if Discord rate-limits us. */
