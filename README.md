@@ -96,6 +96,7 @@ Decisions made in the portal update the Discord message too.
   `general-{user}`, `divisional-{user}` or `command-{user}` in that panel's category, visible only to the opener,
   the bot and that panel's team, and replies privately with a link to the new channel.
 - General → Supervisor role. Divisional and Command → High Command + Command roles.
+- Office of the Colonel, High Command and Command can see, claim and close **any** ticket (`CLOSE_ANY_ROLES`).
 - Staff commands inside a ticket: `/claim`, `/close [reason]`, `/close-request [reason]` (opener confirms or keeps it open).
   Closed tickets are deleted after 5 seconds. An HTML transcript is sent to the opener by DM and posted in
   #ticket-transcripts (`TRANSCRIPT_CHANNEL_ID` in `src/lib/tickets.ts`).
