@@ -77,6 +77,55 @@ export async function sendDirectMessageV2(userId: string, components: Component[
   }
 }
 
+/* ---------------- Channels & commands (support tickets) ---------------- */
+
+export type Overwrite = { id: string; type: 0 | 1; allow?: string; deny?: string };
+
+export function createGuildTextChannel(opts: { name: string; parentId: string; overwrites: Overwrite[]; topic?: string }) {
+  return bot<{ id: string; name: string }>(`/guilds/${env.discord.guildId}/channels`, {
+    method: "POST",
+    body: {
+      name: opts.name,
+      type: 0,
+      parent_id: opts.parentId,
+      topic: opts.topic,
+      permission_overwrites: opts.overwrites.map((o) => ({ allow: "0", deny: "0", ...o })),
+    },
+  });
+}
+
+export function deleteChannel(channelId: string) {
+  return bot(`/channels/${channelId}`, { method: "DELETE" });
+}
+
+/** Registers (or updates) the bot's slash commands in the server. Safe to run any number of times. */
+export function registerGuildCommands(commands: unknown[]) {
+  return bot<unknown[]>(`/applications/${env.discord.clientId}/guilds/${env.discord.guildId}/commands`, {
+    method: "PUT",
+    body: commands,
+  });
+}
+
+/** Posts a follow-up message to an interaction (can be Components V2 and/or ephemeral). */
+export async function interactionFollowup(interactionToken: string, msg: V2Message & { flags?: number }) {
+  const res = await fetch(`${API}/webhooks/${env.discord.clientId}/${interactionToken}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ allowed_mentions: { parse: [] }, ...msg }),
+  });
+  if (!res.ok) throw new DiscordError(res.status, await res.text());
+}
+
+/** Replaces the interaction's original response (e.g. the "Opening your ticket…" loading message). */
+export async function editInteractionResponse(interactionToken: string, body: Record<string, unknown>) {
+  const res = await fetch(`${API}/webhooks/${env.discord.clientId}/${interactionToken}/messages/@original`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ allowed_mentions: { parse: [] }, ...body }),
+  });
+  if (!res.ok) throw new DiscordError(res.status, await res.text());
+}
+
 /* ---------------- Interactions (button clicks) ---------------- */
 
 /** Verifies that a request really came from Discord (Ed25519 signature). */

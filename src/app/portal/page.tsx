@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck } from "lucide-react";
+import { ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot } from "lucide-react";
 import { guard } from "./guard";
 import { getCounts } from "@/lib/data";
 import { avatarUrl } from "@/lib/discord";
@@ -41,6 +41,12 @@ async function Dashboard() {
       icon: PencilRuler,
       title: "Website Content",
       body: "Edit command staff and division commanders.",
+    },
+    viewer.can("content") && {
+      href: "/portal/discord",
+      icon: Bot,
+      title: "Discord Bot",
+      body: "Set up support tickets and slash commands.",
     },
   ].filter(Boolean) as {
     href: string;

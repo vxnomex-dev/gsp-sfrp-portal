@@ -240,3 +240,15 @@ export async function saveDivision(_: FormState, fd: FormData): Promise<FormStat
   refresh();
   return { ok: true, message: "Saved." };
 }
+
+export async function registerDiscordCommands(): Promise<FormState> {
+  await requirePermission("content");
+  const { registerGuildCommands } = await import("@/lib/discord-bot");
+  const { SLASH_COMMANDS } = await import("@/lib/tickets");
+  try {
+    const result = await registerGuildCommands(SLASH_COMMANDS);
+    return { ok: true, message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /support-panel.` };
+  } catch (e) {
+    return { message: `Discord rejected the request: ${(e as Error).message}` };
+  }
+}

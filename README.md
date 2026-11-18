@@ -89,6 +89,19 @@ Accepting sends the applicant a DM with their next steps (#cadet-dashboard → w
 callsign); denying sends a short denial DM. Only Office of the Colonel, High Command and Command can click them.
 Decisions made in the portal update the Discord message too.
 
+## Support tickets (Discord)
+
+- `/support-panel` (Manage Server only) posts the Department Assistance panel in the current channel.
+- Picking **General / Divisional / Command Support** opens a "What's up?" pop-up, then the bot creates
+  `general-{user}`, `divisional-{user}` or `command-{user}` in that panel's category, visible only to the opener,
+  the bot and that panel's team, and replies privately with a link to the new channel.
+- General → Supervisor role. Divisional and Command → High Command + Command roles.
+- Staff commands inside a ticket: `/claim`, `/close [reason]`, `/close-request [reason]` (opener confirms or keeps it open).
+  Closed tickets are deleted after 5 seconds and the opener gets a DM with the reason.
+- Register the commands once from **Portal → Discord Bot**. Categories and roles live in `src/lib/tickets.ts`.
+- Bot permissions needed: Manage Channels, Manage Roles, View Channels, Send Messages, Embed Links, Attach Files,
+  Read Message History, Mention All Roles.
+
 ## Webhooks
 
 New applications and reports are posted to Discord as **Components V2** messages (container + sections, not

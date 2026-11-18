@@ -65,6 +65,23 @@ export const SCHEMA_SQL = [
     sort_order INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`,
+  `CREATE TABLE IF NOT EXISTS tickets (
+    id SERIAL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    channel_id TEXT UNIQUE,
+    opener_id TEXT NOT NULL,
+    opener_name TEXT NOT NULL,
+    inquiry TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    claimed_by_id TEXT,
+    claimed_by_name TEXT,
+    closed_by_id TEXT,
+    closed_by_name TEXT,
+    close_reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    closed_at TIMESTAMPTZ
+  )`,
+  `CREATE INDEX IF NOT EXISTS tickets_open_idx ON tickets (opener_id, kind, status)`,
 ];
 
 const COMMAND_STAFF = [

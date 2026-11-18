@@ -9,11 +9,26 @@ import {
   denyReasonModal,
   recordDecision,
 } from "@/lib/applications-discord";
+import {
+  IDS,
+  TICKET_TYPES,
+  claimTicket,
+  closeRequest,
+  finishClose,
+  inquiryModal,
+  keepOpen,
+  openTicket,
+  postPanel,
+  privateReply,
+  startClose,
+  type Member,
+  type TicketKind,
+} from "@/lib/tickets";
 import { resolveAccess } from "@/lib/permissions";
 import { appRef } from "@/lib/forms";
 
 /**
- * Discord sends button clicks and pop-up (modal) submissions here.
+ * Discord sends button clicks, menu choices, pop-up submissions and slash commands here.
  * Developer Portal → General Information → Interactions Endpoint URL:
  *   https://gspsfrp.xyz/api/discord/interactions
  */
@@ -25,12 +40,20 @@ type ModalRow = { components?: { custom_id: string; value: string }[]; component
 type Interaction = {
   type: number;
   token: string;
-  data?: { custom_id?: string; components?: ModalRow[] };
-  member?: { roles: string[]; nick?: string | null; user: { id: string; username: string; global_name?: string | null } };
+  channel_id?: string;
+  channel?: { id: string };
+  data?: {
+    name?: string;
+    custom_id?: string;
+    values?: string[];
+    options?: { name: string; value: string }[];
+    components?: ModalRow[];
+  };
+  member?: Member;
 };
 
-const ephemeral = (content: string) =>
-  NextResponse.json({ type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } });
+const json = (body: unknown) => NextResponse.json(body);
+const ephemeral = (content: string) => json(privateReply(content));
 
 /** Reads a text input's value from a modal submission (supports both Discord modal layouts). */
 function modalValue(i: Interaction, id: string): string {
@@ -42,7 +65,10 @@ function modalValue(i: Interaction, id: string): string {
   return "";
 }
 
-/** Saves the decision after Discord has been answered, then updates the message and reports problems privately. */
+const option = (i: Interaction, name: string) => i.data?.options?.find((o) => o.name === name)?.value ?? null;
+
+/* ---------------- Cadet applications ---------------- */
+
 function decideLater(i: Interaction, id: number, status: "accepted" | "denied", reason: string | null) {
   const reviewer = i.member!.user;
   const reviewerName = i.member!.nick || reviewer.global_name || reviewer.username;
@@ -91,6 +117,39 @@ function decideLater(i: Interaction, id: number, status: "accepted" | "denied", 
   });
 }
 
+async function handleApplication(i: Interaction, cid: string) {
+  if (!resolveAccess(i.member!.roles).permissions.includes("applications")) {
+    return ephemeral("You don't have permission to decide cadet applications.");
+  }
+  if (i.type === 3 && cid.startsWith(ACCEPT_PREFIX)) {
+    decideLater(i, Number(cid.slice(ACCEPT_PREFIX.length)), "accepted", null);
+    return json({ type: 6 }); // DEFERRED_UPDATE_MESSAGE
+  }
+  if (i.type === 3 && cid.startsWith(DENY_PREFIX)) {
+    return json(denyReasonModal(Number(cid.slice(DENY_PREFIX.length))));
+  }
+  if (i.type === 5 && cid.startsWith(DENY_MODAL_PREFIX)) {
+    const reason = modalValue(i, DENY_REASON_INPUT).trim();
+    if (reason.length < 5) return ephemeral("Please give a reason for the denial (at least 5 characters).");
+    decideLater(i, Number(cid.slice(DENY_MODAL_PREFIX.length)), "denied", reason.slice(0, 500));
+    return json({ type: 6 });
+  }
+  return ephemeral("Unknown action.");
+}
+
+/* ---------------- Support tickets ---------------- */
+
+async function close(i: Interaction, channelId: string, reason: string | null, byOpener: boolean) {
+  const res = await startClose(channelId, i.member!, reason, { byOpener });
+  if (res.ticket) {
+    const t = res.ticket;
+    after(() => finishClose(t, i.member!, res.reason!));
+  }
+  return json(res.reply);
+}
+
+/* ---------------- Entry point ---------------- */
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const ok = verifyDiscordRequest(
@@ -103,38 +162,61 @@ export async function POST(req: NextRequest) {
   const i = JSON.parse(body) as Interaction;
 
   // PING — Discord checks the endpoint works when you save it in the Developer Portal
-  if (i.type === 1) return NextResponse.json({ type: 1 });
-
-  const cid = i.data?.custom_id ?? "";
-  const isButton = i.type === 3;
-  const isModal = i.type === 5;
-  if (!isButton && !isModal) return ephemeral("Unsupported interaction.");
-
-  const ours = [ACCEPT_PREFIX, DENY_PREFIX, DENY_MODAL_PREFIX].some((p) => cid.startsWith(p));
-  if (!ours) return ephemeral("Unknown action.");
+  if (i.type === 1) return json({ type: 1 });
 
   if (!i.member) return ephemeral("This only works inside the server.");
-  if (!resolveAccess(i.member.roles).permissions.includes("applications")) {
-    return ephemeral("You don't have permission to decide cadet applications.");
-  }
+  const channelId = i.channel_id ?? i.channel?.id ?? "";
+  const cid = i.data?.custom_id ?? "";
 
-  // ✅ Accept button
-  if (isButton && cid.startsWith(ACCEPT_PREFIX)) {
-    decideLater(i, Number(cid.slice(ACCEPT_PREFIX.length)), "accepted", null);
-    return NextResponse.json({ type: 6 }); // DEFERRED_UPDATE_MESSAGE
-  }
+  try {
+    // Slash commands
+    if (i.type === 2) {
+      switch (i.data?.name) {
+        case "claim":
+          return json(await claimTicket(channelId, i.member));
+        case "close":
+          return close(i, channelId, option(i, "reason"), false);
+        case "close-request":
+          return json(await closeRequest(channelId, i.member, option(i, "reason")));
+        case "support-panel":
+          return json(await postPanel(channelId));
+        default:
+          return ephemeral("Unknown command.");
+      }
+    }
 
-  // ✖️ Deny button → ask for a reason first
-  if (isButton && cid.startsWith(DENY_PREFIX)) {
-    return NextResponse.json(denyReasonModal(Number(cid.slice(DENY_PREFIX.length))));
-  }
+    // Cadet application buttons / pop-up
+    if ([ACCEPT_PREFIX, DENY_PREFIX, DENY_MODAL_PREFIX].some((p) => cid.startsWith(p))) {
+      return handleApplication(i, cid);
+    }
 
-  // Reason submitted → deny
-  if (isModal && cid.startsWith(DENY_MODAL_PREFIX)) {
-    const reason = modalValue(i, DENY_REASON_INPUT).trim();
-    if (reason.length < 5) return ephemeral("Please give a reason for the denial (at least 5 characters).");
-    decideLater(i, Number(cid.slice(DENY_MODAL_PREFIX.length)), "denied", reason.slice(0, 500));
-    return NextResponse.json({ type: 6 });
+    // Support panel: support type picked → show the "What's up?" pop-up
+    if (i.type === 3 && cid === IDS.panelSelect) {
+      const kind = i.data?.values?.[0] as TicketKind;
+      if (!TICKET_TYPES[kind]) return ephemeral("Unknown support type.");
+      return json(inquiryModal(kind));
+    }
+
+    // "What's up?" submitted → open the ticket
+    if (i.type === 5 && cid.startsWith(IDS.modalPrefix)) {
+      const kind = cid.slice(IDS.modalPrefix.length) as TicketKind;
+      if (!TICKET_TYPES[kind]) return ephemeral("Unknown support type.");
+      const inquiry = modalValue(i, IDS.modalInput).trim().slice(0, 1000);
+      if (inquiry.length < 5) return ephemeral("Please tell us a little more about what you need.");
+      after(() => openTicket(i.token, kind, i.member!, inquiry));
+      return json({ type: 5, data: { flags: 64 } }); // private "thinking…" while the channel is created
+    }
+
+    // Ticket buttons
+    if (i.type === 3) {
+      if (cid === IDS.claim) return json(await claimTicket(channelId, i.member));
+      if (cid === IDS.close) return close(i, channelId, null, false);
+      if (cid === IDS.closeConfirm) return close(i, channelId, "Close request confirmed.", true);
+      if (cid === IDS.keepOpen) return json(await keepOpen(channelId, i.member));
+    }
+  } catch (e) {
+    console.error("[interactions] failed", e);
+    return ephemeral("Something went wrong. Please try again.");
   }
 
   return ephemeral("Unknown action.");
