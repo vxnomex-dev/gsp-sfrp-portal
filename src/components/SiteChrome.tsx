@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { Logo } from "./Logo";
 import { NavLinks } from "./NavLinks";
 import { UserMenu, UserMenuFallback } from "./UserMenu";
-import { navLinks, site } from "@/lib/site";
+import { navLinks, personnelNavLinks, site } from "@/lib/site";
+import { getViewer } from "@/lib/session";
 
 function NavLinksStatic() {
   return (
@@ -17,6 +18,12 @@ function NavLinksStatic() {
       ))}
     </ul>
   );
+}
+
+/** Public links for everyone, plus Department Info for logged-in personnel. */
+async function NavLinksForViewer() {
+  const viewer = await getViewer().catch(() => null);
+  return <NavLinks links={viewer?.can("portal") ? [...navLinks, ...personnelNavLinks] : navLinks} />;
 }
 
 export function Header() {
@@ -51,7 +58,7 @@ export function Header() {
       <nav className="border-b-[3px] border-gold bg-navy-deep">
         <div className="container-x">
           <Suspense fallback={<NavLinksStatic />}>
-            <NavLinks />
+            <NavLinksForViewer />
           </Suspense>
         </div>
       </nav>

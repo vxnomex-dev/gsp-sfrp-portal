@@ -177,6 +177,18 @@ function memberRank(roleIds: string[], rankByRole: Map<string, RankKey>): RankKe
   return ranks.length ? ranks.sort((a, b) => rankIndex(a) - rankIndex(b))[0] : null;
 }
 
+let rolesCache: { at: number; roles: GuildRole[] } | null = null;
+
+/** A member's GSP rank from their role IDs (guild roles cached for 5 minutes). Null if none / lookup fails. */
+export async function rankForRoles(roleIds: string[]): Promise<RankKey | null> {
+  try {
+    if (!rolesCache || Date.now() - rolesCache.at > 300_000) rolesCache = { at: Date.now(), roles: await fetchGuildRoles() };
+    return memberRank(roleIds, rankRoleMap(rolesCache.roles));
+  } catch {
+    return null;
+  }
+}
+
 /** Everyone on the roster, sorted by rank, then callsign, then name. */
 export async function buildRoster({ fresh = false } = {}) {
   const { members, roles } = await loadDiscord(fresh);

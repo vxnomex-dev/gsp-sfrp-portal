@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { navLinks } from "@/lib/site";
 
-export function NavLinks() {
+export function NavLinks({ links = navLinks }: { links?: { href: string; label: string }[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -14,7 +14,7 @@ export function NavLinks() {
   return (
     <>
       <ul className="hidden md:flex">
-        {navLinks.map((l) => (
+        {links.map((l) => (
           <li key={l.href}>
             <Link
               href={l.href}
@@ -38,7 +38,7 @@ export function NavLinks() {
       </button>
       {open && (
         <ul className="border-t border-white/10 pb-2 md:hidden">
-          {navLinks.map((l) => (
+          {links.map((l) => (
             <li key={l.href}>
               <Link
                 href={l.href}
