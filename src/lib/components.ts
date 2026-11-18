@@ -19,16 +19,16 @@ export const section = (content: string, thumbUrl: string): Component => ({
   components: [text(content)],
   accessory: { type: 11, media: { url: thumbUrl } },
 });
-/** The Georgia State Patrol banner (public/images/gsp-banner.jpg), shown at the top of every message. */
+/** The Georgia State Patrol banner (public/images/gsp-banner-2.jpg), shown at the top of every message. */
 export const banner = (): Component => ({
   type: 12,
-  items: [{ media: { url: `${env.baseUrl}/images/gsp-banner.jpg` }, description: "Georgia State Patrol" }],
+  items: [{ media: { url: `${env.baseUrl}/images/gsp-banner-2.jpg` }, description: "Georgia State Patrol" }],
 });
 
-/** The "Wisdom, Justice and Moderation" strip (public/images/gsp-footer.jpg), shown at the bottom of main messages. */
+/** The "Wisdom, Justice and Moderation" strip (public/images/gsp-footer-2.jpg), shown at the bottom of main messages. */
 export const footerBanner = (): Component => ({
   type: 12,
-  items: [{ media: { url: `${env.baseUrl}/images/gsp-footer.jpg` }, description: "Georgia State Patrol" }],
+  items: [{ media: { url: `${env.baseUrl}/images/gsp-footer-2.jpg` }, description: "Georgia State Patrol" }],
 });
 
 /**
