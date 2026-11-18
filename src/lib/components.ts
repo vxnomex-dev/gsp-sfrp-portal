@@ -1,4 +1,5 @@
 import "server-only";
+import { env } from "./env";
 
 /**
  * Helpers for Discord Components V2 messages.
@@ -21,10 +22,17 @@ export const section = (content: string, thumbUrl: string): Component => ({
   components: [text(content)],
   accessory: { type: 11, media: { url: thumbUrl } },
 });
-export const container = (accent: number, components: Component[]): Component => ({
+/** The Georgia State Patrol banner (public/images/gsp-banner.jpg), shown at the top of every message. */
+export const banner = (): Component => ({
+  type: 12,
+  items: [{ media: { url: `${env.baseUrl}/images/gsp-banner.jpg` }, description: "Georgia State Patrol" }],
+});
+
+/** A Components V2 container. Every message gets the GSP banner at the top unless `withBanner` is false. */
+export const container = (accent: number, components: Component[], withBanner = true): Component => ({
   type: 17,
   accent_color: accent,
-  components,
+  components: withBanner ? [banner(), ...components] : components,
 });
 export const buttonRow = (buttons: { id: string; label: string; style: 1 | 2 | 3 | 4; emoji?: string }[]): Component => ({
   type: 1,
