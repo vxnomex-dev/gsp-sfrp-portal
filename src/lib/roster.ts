@@ -140,7 +140,10 @@ const CALLSIGN_PREFIX = /^\s*\d{2,4}\s*(?:[|│¦\-–—:/\\]|\s[Il](?=\s))\s*/
 /** "602 | Ryan Callahan" → "Ryan Callahan" */
 export function baseName(m: GuildMember) {
   const raw = (m.nick || m.user.global_name || m.user.username).trim();
-  return raw.replace(CALLSIGN_PREFIX, "").trim() || m.user.username;
+  let name = raw;
+  // Strip every leading callsign ("901 | 839 I M. Hardy" → "M. Hardy")
+  for (let i = 0; i < 5 && CALLSIGN_PREFIX.test(name); i++) name = name.replace(CALLSIGN_PREFIX, "");
+  return name.trim() || m.user.username;
 }
 
 export const nicknameFor = (callsign: number | null, name: string) =>
