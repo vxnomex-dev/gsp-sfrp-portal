@@ -78,7 +78,7 @@ Command staff photos can be set from the portal (**Portal → Website Content �
 
 New applications are posted **by the bot** (not the webhook) so the Accept / Deny buttons work. Setup:
 
-1. Vercel env var `DISCORD_PUBLIC_KEY` = Developer Portal → General Information → **Public Key**.
+1. The app's **Public Key** is built into `src/lib/env.ts` (override with the `DISCORD_PUBLIC_KEY` env var).
 2. Developer Portal → General Information → **Interactions Endpoint URL** =
    `https://gspsfrp.xyz/api/discord/interactions` → Save (Discord tests it immediately).
 3. The bot needs **View Channel**, **Send Messages** and **Mention All Roles** in the applications channel

@@ -15,7 +15,7 @@ export const env = {
     clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
     botToken: process.env.DISCORD_BOT_TOKEN || "",
     /** Developer Portal → General Information → Public Key. Used to verify button clicks really come from Discord. */
-    publicKey: process.env.DISCORD_PUBLIC_KEY || "",
+    publicKey: process.env.DISCORD_PUBLIC_KEY || "01bba59ada9f629a098ed1406081e0147332b375c4e87c536581d702d05a068c",
     guildId: process.env.DISCORD_GUILD_ID || "1558194098890874971", // South Fulton Roleplay
   },
 
