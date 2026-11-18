@@ -25,8 +25,8 @@ async function Picker({ searchParams }: { searchParams: PageProps<"/dev-login">[
     ["public", "Member of the public (no GSP roles)"],
     ["employee", "Trooper (employee role)"],
     ["command", "Command Staff"],
-    ["psb", "Professional Standards Bureau"],
-    ["all", "Command Staff + PSB"],
+    ["psb", "Human Resources"],
+    ["all", "Command Staff + Human Resources"],
   ];
   return (
     <div className="card card-gold p-8">

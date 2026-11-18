@@ -4,7 +4,7 @@ import { env } from "./env";
 export type Permission =
   | "portal" // employee portal
   | "applications" // view + decide cadet applications
-  | "reports" // Professional Standards Bureau only
+  | "reports" // Human Resources only
   | "content"; // edit command staff + divisions
 
 export type Access = {
@@ -36,7 +36,7 @@ export function resolveAccess(roleIds: string[]): Access {
   if (has(env.roles.psb)) {
     perms.add("portal");
     perms.add("reports");
-    labels.push("Professional Standards Bureau");
+    labels.push("Human Resources");
   }
   return { permissions: [...perms], labels };
 }

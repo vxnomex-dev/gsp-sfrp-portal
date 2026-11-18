@@ -17,7 +17,7 @@ export function ReportForm({ discordName }: { discordName: string }) {
         <CheckCircle2 className="mx-auto text-success" size={48} />
         <h2 className="mt-4 text-3xl font-semibold uppercase text-navy-ink">Report received</h2>
         <p className="mt-3 text-muted-foreground">
-          Your case number is <strong className="text-navy-ink">{state.ref}</strong>. The Professional Standards Bureau
+          Your case number is <strong className="text-navy-ink">{state.ref}</strong>. Human Resources
           has been notified. An investigator may contact you on Discord if they need more information.
         </p>
       </div>

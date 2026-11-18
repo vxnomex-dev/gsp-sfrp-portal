@@ -32,7 +32,7 @@ async function Dashboard() {
       href: "/portal/reports",
       icon: FileWarning,
       title: "Employee Reports",
-      body: "Professional Standards Bureau case files.",
+      body: "Human Resources case files.",
       count: counts.reportsOpen,
       countLabel: "open cases",
     },
@@ -105,7 +105,7 @@ async function Dashboard() {
       ) : (
         <div className="border-l-4 border-gold bg-panel px-6 py-5 text-muted-foreground">
           You&apos;re logged in as a Georgia State Patrol employee. Staff tools will appear here if you hold a command
-          staff, application reviewer or Professional Standards Bureau role.
+          staff, application reviewer or Human Resources role.
         </div>
       )}
     </div>

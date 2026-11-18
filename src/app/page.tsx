@@ -18,7 +18,7 @@ const features = [
   {
     icon: Users,
     title: "Community Trust",
-    body: "Every trooper answers to the public. Our Professional Standards Bureau reviews every complaint made against a member of the Patrol.",
+    body: "Every trooper answers to the public. Our Human Resources office reviews every complaint made against a member of the Patrol.",
     href: "/report",
   },
 ];
@@ -28,7 +28,7 @@ const divisionNames = [
   "Crime Suppression Unit",
   "Special Response Team",
   "Criminal Interdiction Unit",
-  "Professional Standards Bureau",
+  "Human Resources",
 ];
 
 export default function HomePage() {
@@ -209,7 +209,7 @@ export default function HomePage() {
             <h3 className="mt-4 text-3xl font-semibold uppercase text-navy-ink">Report a Trooper</h3>
             <p className="mt-2 text-muted-foreground">
               Had a negative experience with a member of the Patrol? Reports go directly and confidentially to the
-              Professional Standards Bureau.
+              Human Resources.
             </p>
             <Link href="/report" className="btn btn-navy mt-6">
               File a report <ArrowRight size={18} />

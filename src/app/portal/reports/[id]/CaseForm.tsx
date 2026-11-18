@@ -21,7 +21,7 @@ export function CaseForm({ id, status, notes, assigned }: { id: number; status: 
       </div>
       <div>
         <label className="field-label" htmlFor="notes">Investigation notes</label>
-        <textarea id="notes" name="notes" defaultValue={notes} rows={7} className="field" placeholder="Findings, interviews, outcome (PSB only)" />
+        <textarea id="notes" name="notes" defaultValue={notes} rows={7} className="field" placeholder="Findings, interviews, outcome (HR only)" />
       </div>
       {assigned !== "me" && (
         <Checkbox

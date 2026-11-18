@@ -40,7 +40,7 @@ const ROLE_NAMES: Record<string, string> = {
   "1558194099268358282": "Supervisor",
   "1558194099268358274": "Patrol",
   "1558194099197059241": "Department Personnel",
-  "1558194098995732496": "Professional Standards Bureau",
+  "1558194098995732496": "Human Resources",
 };
 
 /** Pulls the readable text out of Components V2 / embeds so bot messages show up in the transcript. */

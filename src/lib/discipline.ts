@@ -15,7 +15,7 @@ import {
   setNickname,
   startThreadFromMessage,
 } from "./discord-bot";
-import { baseName, invalidateRosterCache, moveToLowestFreeCallsign, nicknameFor, releaseCallsign } from "./roster";
+import { assignCallsignForMember, baseName, invalidateRosterCache, releaseCallsign } from "./roster";
 import type { Member } from "./tickets";
 
 /* ------------------------------------------------------------------ */
@@ -35,7 +35,7 @@ export const DISCIPLINE = {
   ],
   /** Roles that may use /infraction issue and /infraction void. */
   infractRoles: [
-    "1558194098995732496", // Professional Standards Bureau
+    "1558194098995732496", // Human Resources
     "1558194099327074422", // Office of the Colonel
   ],
   /** Kept on termination (matched by ID, or by a role named "Community Member" if this is empty). */
@@ -128,14 +128,11 @@ export async function runPromotion(opts: {
       problems.push(`They didn't have <@&${oldRoleId}>, so nothing was removed.`);
     }
 
-    // Callsign: lowest free number, then update the nickname
-    const { old: oldCallsign, next: newCallsign } = await moveToLowestFreeCallsign(userId);
-    if (newCallsign !== null) {
-      const nick = nicknameFor(newCallsign, baseName(member));
-      if (member.nick !== nick) await setNickname(userId, nick).catch((e) => problems.push(`Nickname not updated: ${explain(e)}`));
-    } else {
-      problems.push("No free callsigns left in the 600s/700s.");
-    }
+    // Callsign: lowest free number in the new rank's block, then update the nickname
+    const { old: oldCallsign, next: newCallsign, rank: rankLabel, full, nickError } = await assignCallsignForMember(userId);
+    if (full) problems.push(`All ${rankLabel} callsigns are taken, so they have no callsign until a spot opens.`);
+    else if (!rankLabel) problems.push("Their new role isn't recognised as a rank, so no callsign was given.");
+    if (nickError) problems.push(`Nickname not updated: ${nickError}`);
     invalidateRosterCache();
 
     // Announcement
@@ -264,6 +261,7 @@ async function stripRoles(userId: string, problems: string[]) {
   await releaseCallsign(userId);
   const name = baseName(member);
   if (member.nick && member.nick !== name) await setNickname(userId, name).catch(() => {});
+  invalidateRosterCache();
   return removed;
 }
 
@@ -411,11 +409,7 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
       const roles: string[] = typeof inf.removed_roles === "string" ? JSON.parse(inf.removed_roles) : inf.removed_roles;
       for (const r of roles) await addMemberRole(inf.user_id, r).catch((e) => problems.push(`Couldn't restore <@&${r}>: ${explain(e)}`));
       if (roles.length) {
-        const { next } = await moveToLowestFreeCallsign(inf.user_id);
-        if (next !== null) {
-          const member = await fetchGuildMember(inf.user_id).catch(() => null);
-          if (member) await setNickname(inf.user_id, nicknameFor(next, baseName(member))).catch(() => {});
-        }
+        await assignCallsignForMember(inf.user_id).catch(() => {});
         invalidateRosterCache();
       }
     }
@@ -460,7 +454,7 @@ export const DISCIPLINE_COMMANDS = [
   },
   {
     name: "infraction",
-    description: "Issue or void infractions (Professional Standards Bureau and Office of the Colonel only)",
+    description: "Issue or void infractions (Human Resources and Office of the Colonel only)",
     type: 1,
     contexts: [0],
     options: [

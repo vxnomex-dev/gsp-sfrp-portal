@@ -40,7 +40,7 @@ async function ReportsList({ searchParams }: { searchParams: PageProps<"/portal/
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-3xl font-semibold uppercase text-navy-ink">Employee Reports</h2>
         <span className="inline-flex items-center gap-1.5 rounded-sm bg-navy px-2.5 py-1 font-display text-xs uppercase tracking-wider text-white">
-          <Lock size={12} className="text-gold" /> PSB confidential
+          <Lock size={12} className="text-gold" /> HR confidential
         </span>
       </div>
 

@@ -88,4 +88,4 @@ export const REPORT_STATUSES = {
 } as const;
 
 export const appRef = (id: number) => `APP-${String(id).padStart(4, "0")}`;
-export const reportRef = (id: number) => `PSB-${String(id).padStart(4, "0")}`;
+export const reportRef = (id: number) => `HR-${String(id).padStart(4, "0")}`;

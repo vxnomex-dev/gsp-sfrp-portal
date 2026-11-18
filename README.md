@@ -10,7 +10,7 @@ Website + employee portal for the Georgia State Patrol in South Fulton Roleplay.
 | Supervisor, Patrol, Department Personnel | Open the employee portal |
 | Command | Portal **+** view / accept / deny cadet applications |
 | Office of the Colonel, High Command | Applications **+** edit Command Staff and Divisions pages (High Command is pinged on new applications) |
-| Professional Standards Bureau (`1558194098995732496`) | **Only role** that can see and work trooper reports (pinged on new reports) |
+| Human Resources (`1558194098995732496`) | **Only role** that can see and work trooper reports (pinged on new reports) |
 
 Role changes in Discord apply on the site within about 60 seconds.
 
@@ -108,13 +108,15 @@ Decisions made in the portal update the Discord message too.
 
 ## Roster & callsigns
 
-- Public page `/roster`: everyone with a GSP role, grouped Office of the Colonel → High Command → Command →
-  Supervisors → Patrol → Department Personnel, then by rank (role order in Discord), then name. Synced live.
-- Callsigns: 600–699, then 700–799. People keep their callsign; newcomers get the lowest free number; people who
-  leave free theirs up. **Portal → Roster & Callsigns → Re-issue** renumbers everyone in chain-of-command order.
-- The bot sets nicknames to `600 | Name` (needs **Manage Nicknames**, and its role must be above everyone it renames;
-  the server owner can never be renamed by a bot). Auto-sync runs at most every 10 minutes when the roster is viewed.
-- Ranks are detected from role names, or pick them in the portal. Sections/ranges live in `src/lib/roster.ts`.
+- Public page `/roster`, sorted by **rank** (from Discord role names), with Vacant spots shown for OOTC and Command.
+- Callsign blocks (`RANKS` in `src/lib/roster.ts`):
+  Colonel 600 · Lt. Colonel 601–602 · Major 610–612 · Captain 620–623 · Lieutenant 630–632 ·
+  Staff Sergeant 700–719 · Sergeant 720–749 · Corporal 750–799 ·
+  Senior Trooper 800–849 · Trooper First Class 850–899 · Trooper 900–959 · Probationary Trooper 960–999.
+  No rank (e.g. cadets) = no callsign.
+- People keep their callsign while it fits their rank; anyone who changes rank gets the lowest free number in the new
+  block. **Portal → Roster & Callsigns → Re-issue** renumbers everyone (current number decides seniority within a rank).
+- The bot sets nicknames to `630 | Name` (needs **Manage Nicknames** and its role above everyone it renames).
 - Needs **Server Members Intent** (Developer Portal → Bot).
 
 ## Promotions & infractions (Discord)
@@ -122,7 +124,7 @@ Decisions made in the portal update the Discord message too.
 - `/promote user reason new_rank old_rank` — Command, High Command, Office of the Colonel. Adds the new rank role,
   removes the old one, gives the member the lowest free callsign, updates their nickname and the roster, and posts
   the promotion (with the new callsign).
-- `/infraction issue user reason type` — Professional Standards Bureau and Office of the Colonel. Types: termination,
+- `/infraction issue user reason type` — Human Resources and Office of the Colonel. Types: termination,
   strike, warning, inactivity notice, suspension (asks for a duration), demotion. Posts the notice, opens an evidence
   thread pinging the issuer, and DMs the member. Termination removes every role except Community Member and frees the
   callsign.

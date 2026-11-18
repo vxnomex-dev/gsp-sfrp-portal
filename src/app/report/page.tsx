@@ -12,9 +12,9 @@ export const metadata: Metadata = { title: "Report a Trooper" };
 export default function ReportPage() {
   return (
     <>
-      <PageHeader eyebrow="Professional Standards Bureau" title="Report a Trooper" image={site.images.headers.report}>
+      <PageHeader eyebrow="Human Resources" title="Report a Trooper" image={site.images.headers.report}>
         If a member of the Georgia State Patrol acted unprofessionally or broke the rules, let us know. Every report is
-        reviewed by the Professional Standards Bureau.
+        reviewed by Human Resources.
       </PageHeader>
       <section className="py-14">
         <div className="mx-auto max-w-3xl px-5">
@@ -22,8 +22,8 @@ export default function ReportPage() {
             <Lock className="mt-0.5 shrink-0 text-navy" size={20} />
             <div className="text-[0.97rem] text-muted-foreground">
               <div className="font-display text-sm uppercase tracking-[0.12em] text-navy-ink">Confidential</div>
-              Reports are visible <strong>only</strong> to members of the Professional Standards Bureau. Your identity is
-              never shared with the trooper you report. Clips or screenshots make it much easier for PSB to act — upload
+              Reports are visible <strong>only</strong> to members of Human Resources. Your identity is
+              never shared with the trooper you report. Clips or screenshots make it much easier for HR to act — upload
               them to YouTube, Medal, Imgur or Discord and paste the links below. False reports may result in
               disciplinary action.
             </div>
@@ -42,7 +42,7 @@ async function ReportGate() {
   if (!viewer) {
     return (
       <LoginRequired next="/report" title="Log in to file a report">
-        Logging in with Discord lets PSB investigators follow up with you, and helps us prevent spam and false reports.
+        Logging in with Discord lets HR investigators follow up with you, and helps us prevent spam and false reports.
       </LoginRequired>
     );
   }

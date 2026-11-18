@@ -3,6 +3,7 @@ import { env } from "./env";
 import { query, queryOne } from "./db";
 import {
   DiscordError,
+  fetchGuildMember,
   fetchGuildMembers,
   fetchGuildRoles,
   setNickname,
@@ -11,33 +12,65 @@ import {
 } from "./discord-bot";
 
 /* ------------------------------------------------------------------ */
-/* Chain of command                                                    */
+/* Ranks & callsign blocks                                             */
 /* ------------------------------------------------------------------ */
 
-/** Roster sections, top to bottom. A member appears in the first section whose role they hold. */
-export const SECTIONS = [
-  { key: "ootc", label: "Office of the Colonel", roleId: "1558194099327074422" },
-  { key: "high-command", label: "High Command", roleId: "1558194099327074418" },
-  { key: "command", label: "Command", roleId: "1558194099297853566" },
-  { key: "supervisors", label: "Supervisors", roleId: "1558194099268358282" },
-  { key: "patrol", label: "Patrol", roleId: "1558194099268358274" },
-  { key: "personnel", label: "Department Personnel", roleId: "1558194099197059241" },
+export const TIERS = [
+  { key: "ootc", label: "Office of the Colonel", showVacancies: true },
+  { key: "command", label: "Command", showVacancies: true },
+  { key: "supervisors", label: "Supervisors", showVacancies: false },
+  { key: "patrol", label: "Patrol", showVacancies: false },
 ] as const;
+export type TierKey = (typeof TIERS)[number]["key"];
 
-/** Callsign blocks, in order. When the 600s are full, the 700s are used. */
-export const CALLSIGN_RANGES: [number, number][] = [
-  [600, 699],
-  [700, 799],
+type Rank = { key: string; label: string; tier: TierKey; block: readonly [number, number]; match: RegExp };
+
+/**
+ * Ranks top to bottom. A member's rank comes from their Discord role NAME. Each rank owns a block of
+ * callsigns; for the Office of the Colonel and Command, empty numbers show on the roster as Vacant.
+ */
+export const RANKS = [
+  { key: "colonel", label: "Colonel", tier: "ootc", block: [600, 600], match: /\bcolonel\b/i },
+  { key: "ltcol", label: "Lieutenant Colonel", tier: "ootc", block: [601, 602], match: /\b(lieutenant|lt)\.?\s*col(onel)?\b/i },
+  { key: "major", label: "Major", tier: "command", block: [610, 612], match: /\b(major|maj)\b/i },
+  { key: "captain", label: "Captain", tier: "command", block: [620, 623], match: /\b(captain|capt|cpt)\b/i },
+  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [630, 632], match: /\b(lieutenant|lt)\b/i },
+  { key: "ssgt", label: "Staff Sergeant", tier: "supervisors", block: [700, 719], match: /\b(staff\s*(sergeant|sgt)|ssgt)\b/i },
+  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [720, 749], match: /\b(sergeant|sgt)\b/i },
+  { key: "cpl", label: "Corporal", tier: "supervisors", block: [750, 799], match: /\b(corporal|cpl)\b/i },
+  { key: "srtpr", label: "Senior Trooper", tier: "patrol", block: [800, 849], match: /\b(senior|sr)\.?\s*(trooper|tpr)\b/i },
+  { key: "tfc", label: "Trooper First Class", tier: "patrol", block: [850, 899], match: /\b(trooper\s*first\s*class|tfc)\b/i },
+  { key: "tpr", label: "Trooper", tier: "patrol", block: [900, 959], match: /\b(trooper|tpr)\b/i },
+  { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [960, 999], match: /\b(probationary|probie)\b/i },
+] as const satisfies readonly Rank[];
+export type RankKey = (typeof RANKS)[number]["key"];
+
+const RANK_ORDER = RANKS.map((r) => r.key) as RankKey[];
+const rankIndex = (k: RankKey | null) => (k ? RANK_ORDER.indexOf(k) : RANK_ORDER.length);
+export const rankInfo = (k: RankKey): Rank => RANKS.find((r) => r.key === k)!;
+
+/** Most specific names are checked first ("Lieutenant Colonel" before "Lieutenant", "Staff Sergeant" before "Sergeant"…). */
+const MATCH_ORDER: RankKey[] = ["ltcol", "colonel", "major", "captain", "lieutenant", "ssgt", "sgt", "cpl", "srtpr", "tfc", "prob", "tpr"];
+
+/** Department roles: anyone holding one of these is on the roster even without a rank (e.g. cadets). */
+export const DEPARTMENT_ROLE_IDS = [
+  "1558194099327074422", // Office of the Colonel
+  "1558194099327074418", // High Command
+  "1558194099297853566", // Command
+  "1558194099268358282", // Supervisor
+  "1558194099268358274", // Patrol
+  "1558194099197059241", // Department Personnel
 ];
 
-/** Role names that count as a rank when no ranks have been picked in the portal. */
-const RANK_WORDS =
-  /\b(colonel|lieutenant colonel|lt\.? ?col|major|captain|capt|lieutenant|lt|sergeant|sgt|master sergeant|staff sergeant|corporal|cpl|trooper|tfc|cadet|probationary|recruit)\b/i;
-
-const SECTION_ROLE_IDS: string[] = SECTIONS.map((s) => s.roleId);
+/** Which rank a Discord role represents, by its name. */
+export function rankForRoleName(name: string): RankKey | null {
+  if (/office of the colonel/i.test(name)) return null;
+  for (const k of MATCH_ORDER) if (rankInfo(k).match.test(name)) return k;
+  return null;
+}
 
 /* ------------------------------------------------------------------ */
-/* Settings stored in the database (meta table)                        */
+/* Reports stored in the meta table                                    */
 /* ------------------------------------------------------------------ */
 
 async function getMeta<T>(key: string): Promise<T | null> {
@@ -51,11 +84,6 @@ async function setMeta(key: string, value: unknown) {
   ]);
 }
 
-/** Role IDs picked as ranks in the portal, or null to detect ranks from role names. */
-export const getRankRoleSetting = () => getMeta<string[]>("roster_rank_roles");
-export const setRankRoleSetting = (ids: string[] | null) =>
-  ids ? setMeta("roster_rank_roles", ids) : query(`DELETE FROM meta WHERE key='roster_rank_roles'`);
-
 export type SyncReport = {
   at: string;
   reissued: boolean;
@@ -63,7 +91,8 @@ export type SyncReport = {
   newCallsigns: number;
   nicknamesUpdated: number;
   failures: { name: string; reason: string }[];
-  outOfCallsigns: number;
+  /** e.g. "Major (all 3 spots taken): Sam Price" */
+  noSpot: string[];
 };
 export const getLastSync = () => getMeta<SyncReport>("roster_last_sync");
 
@@ -77,16 +106,11 @@ export type RosterEntry = {
   username: string;
   avatar: string | null;
   nick: string | null;
-  rank: string | null;
-  rankPosition: number;
-  section: (typeof SECTIONS)[number]["key"];
+  rank: RankKey | null;
   callsign: number | null;
+  /** The number currently at the front of their nickname, used to keep seniority when renumbering. */
+  nickCallsign: number | null;
 };
-
-export function isRankRole(r: GuildRole, picked: string[] | null) {
-  if (SECTION_ROLE_IDS.includes(r.id) || r.name === "@everyone") return false;
-  return picked ? picked.includes(r.id) : RANK_WORDS.test(r.name);
-}
 
 /** "602 | Ryan Callahan" → "Ryan Callahan" */
 export function baseName(m: GuildMember) {
@@ -94,7 +118,8 @@ export function baseName(m: GuildMember) {
   return raw.replace(/^\s*\d{2,4}\s*[|│\-–—:]\s*/, "").trim() || m.user.username;
 }
 
-export const nicknameFor = (callsign: number, name: string) => `${callsign} | ${name}`.slice(0, 32);
+export const nicknameFor = (callsign: number | null, name: string) =>
+  (callsign === null ? name : `${callsign} | ${name}`).slice(0, 32);
 
 let cache: { at: number; members: GuildMember[]; roles: GuildRole[] } | null = null;
 
@@ -105,11 +130,29 @@ async function loadDiscord(fresh = false) {
   return cache;
 }
 
-/** Everyone holding a GSP role, in chain-of-command order (section → rank → name). */
-export async function buildRoster({ fresh = false } = {}): Promise<{ entries: RosterEntry[]; roles: GuildRole[] }> {
+export function invalidateRosterCache() {
+  cache = null;
+}
+
+function rankRoleMap(roles: GuildRole[]) {
+  const map = new Map<string, RankKey>();
+  for (const r of roles) {
+    if (DEPARTMENT_ROLE_IDS.includes(r.id) || r.name === "@everyone") continue;
+    const k = rankForRoleName(r.name);
+    if (k) map.set(r.id, k);
+  }
+  return map;
+}
+
+function memberRank(roleIds: string[], rankByRole: Map<string, RankKey>): RankKey | null {
+  const ranks = roleIds.map((id) => rankByRole.get(id)).filter((r): r is RankKey => !!r);
+  return ranks.length ? ranks.sort((a, b) => rankIndex(a) - rankIndex(b))[0] : null;
+}
+
+/** Everyone on the roster, sorted by rank, then callsign, then name. */
+export async function buildRoster({ fresh = false } = {}) {
   const { members, roles } = await loadDiscord(fresh);
-  const picked = await getRankRoleSetting();
-  const rankRoles = new Map(roles.filter((r) => isRankRole(r, picked)).map((r) => [r.id, r]));
+  const rankByRole = rankRoleMap(roles);
   const callsigns = new Map(
     (await query<{ user_id: string; callsign: number }>(`SELECT user_id, callsign FROM roster_callsigns`)).map((r) => [
       r.user_id,
@@ -120,46 +163,71 @@ export async function buildRoster({ fresh = false } = {}): Promise<{ entries: Ro
   const entries: RosterEntry[] = [];
   for (const m of members) {
     if (m.user.bot) continue;
-    const section = SECTIONS.find((s) => m.roles.includes(s.roleId));
-    if (!section) continue;
-    const rank = m.roles
-      .map((id) => rankRoles.get(id))
-      .filter((r): r is GuildRole => !!r)
-      .sort((a, b) => b.position - a.position)[0];
+    const rank = memberRank(m.roles, rankByRole);
+    if (!rank && !m.roles.some((r) => DEPARTMENT_ROLE_IDS.includes(r))) continue;
     entries.push({
       userId: m.user.id,
       name: baseName(m),
       username: m.user.username,
       avatar: m.user.avatar ?? null,
       nick: m.nick ?? null,
-      rank: rank?.name ?? null,
-      rankPosition: rank?.position ?? -1,
-      section: section.key,
+      rank,
       callsign: callsigns.get(m.user.id) ?? null,
+      nickCallsign: Number(/^\s*(\d{2,4})\s*[|│\-–—:]/.exec(m.nick ?? "")?.[1] ?? NaN) || null,
     });
   }
-
-  const sectionIndex = (k: string) => SECTIONS.findIndex((s) => s.key === k);
   entries.sort(
     (a, b) =>
-      sectionIndex(a.section) - sectionIndex(b.section) ||
-      b.rankPosition - a.rankPosition ||
+      rankIndex(a.rank) - rankIndex(b.rank) ||
+      (a.callsign ?? 9999) - (b.callsign ?? 9999) ||
+      (a.nickCallsign ?? 9999) - (b.nickCallsign ?? 9999) ||
       a.name.localeCompare(b.name),
   );
-  return { entries, roles: [...roles].sort((a, b) => b.position - a.position) };
+
+  // Which Discord role(s) were matched to each rank (shown in the portal)
+  const detected = new Map<RankKey, string[]>();
+  for (const r of roles) {
+    const k = rankByRole.get(r.id);
+    if (k) detected.set(k, [...(detected.get(k) ?? []), r.name]);
+  }
+  return { entries, detected };
 }
 
 /* ------------------------------------------------------------------ */
-/* Syncing callsigns + nicknames                                       */
+/* Assigning callsigns                                                 */
 /* ------------------------------------------------------------------ */
 
-function* freeCallsigns(taken: Set<number>) {
-  for (const [lo, hi] of CALLSIGN_RANGES) for (let n = lo; n <= hi; n++) if (!taken.has(n)) yield n;
+const inBlock = (n: number | null, rank: RankKey | null) => {
+  if (n === null || !rank) return false;
+  const [lo, hi] = rankInfo(rank).block;
+  return n >= lo && n <= hi;
+};
+
+function lowestFree(rank: RankKey, taken: Set<number>) {
+  const [lo, hi] = rankInfo(rank).block;
+  for (let n = lo; n <= hi; n++) if (!taken.has(n)) return n;
+  return null;
+}
+
+async function saveCallsign(userId: string, callsign: number | null) {
+  if (callsign === null) await query(`DELETE FROM roster_callsigns WHERE user_id=$1`, [userId]);
+  else
+    await query(
+      `INSERT INTO roster_callsigns (user_id, callsign) VALUES ($1,$2)
+       ON CONFLICT (user_id) DO UPDATE SET callsign=EXCLUDED.callsign, assigned_at=now()`,
+      [userId, callsign],
+    );
+}
+
+function explain(err: unknown) {
+  return err instanceof DiscordError && err.status === 403
+    ? "The bot can't rename this member (server owner, or their role is above the bot's)."
+    : (err as Error).message.slice(0, 160);
 }
 
 /**
- * Gives every member on the roster a callsign and sets their nickname to "600 | Name".
- * reissue = true wipes all callsigns first and numbers everyone from 600 in chain-of-command order.
+ * Makes everyone's callsign match their rank's block and sets nicknames to "630 | Name".
+ * reissue = true clears all callsigns first, so everyone is numbered fresh within their block.
  */
 export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> {
   if (!env.discord.botToken) throw new Error("DISCORD_BOT_TOKEN is not set.");
@@ -167,51 +235,53 @@ export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> 
   try {
     if (reissue) await query(`DELETE FROM roster_callsigns`);
     const { entries } = await buildRoster({ fresh: true });
+    const before = new Map(entries.map((e) => [e.userId, e.callsign]));
 
-    // Release callsigns of people who are no longer on the roster
+    // People who left the roster lose their callsign
     const onRoster = entries.map((e) => e.userId);
-    if (onRoster.length) {
-      await query(`DELETE FROM roster_callsigns WHERE NOT (user_id = ANY($1::text[]))`, [onRoster]);
-    } else {
-      await query(`DELETE FROM roster_callsigns`);
-    }
+    if (onRoster.length) await query(`DELETE FROM roster_callsigns WHERE NOT (user_id = ANY($1::text[]))`, [onRoster]);
+    else await query(`DELETE FROM roster_callsigns`);
 
-    const taken = new Set(entries.map((e) => e.callsign).filter((c): c is number => c !== null));
-    const pool = freeCallsigns(taken);
-    let newCallsigns = 0;
-    let outOfCallsigns = 0;
+    // Keep callsigns that already fit the member's rank; everyone else gets the lowest free number in their block
+    const taken = new Set<number>();
+    const needs: RosterEntry[] = [];
     for (const e of entries) {
-      if (e.callsign !== null) continue;
-      const next = pool.next();
-      if (next.done) {
-        outOfCallsigns++;
+      if (e.rank && inBlock(e.callsign, e.rank) && !taken.has(e.callsign!)) {
+        taken.add(e.callsign!);
+      } else {
+        e.callsign = null;
+        if (e.rank) needs.push(e);
+      }
+    }
+    let newCallsigns = 0;
+    const noSpot: string[] = [];
+    for (const e of needs) {
+      const next = lowestFree(e.rank!, taken);
+      if (next === null) {
+        const r = rankInfo(e.rank!);
+        noSpot.push(`${r.label} (all ${r.block[1] - r.block[0] + 1} spots taken): ${e.name}`);
         continue;
       }
-      e.callsign = next.value;
-      await query(
-        `INSERT INTO roster_callsigns (user_id, callsign) VALUES ($1,$2)
-         ON CONFLICT (user_id) DO UPDATE SET callsign=EXCLUDED.callsign, assigned_at=now()`,
-        [e.userId, e.callsign],
-      );
+      taken.add(next);
+      e.callsign = next;
       newCallsigns++;
     }
+    // Save only what changed (two passes so no unique-number clash mid-way)
+    const changed = entries.filter((e) => before.get(e.userId) !== e.callsign);
+    for (const e of changed) await saveCallsign(e.userId, null);
+    for (const e of changed) if (e.callsign !== null) await saveCallsign(e.userId, e.callsign);
 
     // Nicknames
     let nicknamesUpdated = 0;
     const failures: SyncReport["failures"] = [];
     for (const e of entries) {
-      if (e.callsign === null) continue;
       const desired = nicknameFor(e.callsign, e.name);
-      if (e.nick === desired) continue;
+      if ((e.nick ?? null) === desired || (!e.nick && e.callsign === null)) continue;
       try {
         await setNickname(e.userId, desired);
         nicknamesUpdated++;
       } catch (err) {
-        const reason =
-          err instanceof DiscordError && err.status === 403
-            ? "The bot can't rename this member (server owner, or their role is above the bot's)."
-            : (err as Error).message.slice(0, 160);
-        failures.push({ name: `${e.callsign} | ${e.name}`, reason });
+        failures.push({ name: desired, reason: explain(err) });
       }
     }
 
@@ -223,7 +293,7 @@ export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> 
       newCallsigns,
       nicknamesUpdated,
       failures,
-      outOfCallsigns,
+      noSpot,
     };
     await setMeta("roster_last_sync", report);
     return report;
@@ -232,27 +302,37 @@ export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> 
   }
 }
 
-export function invalidateRosterCache() {
-  cache = null;
-}
-
-/** Moves one member to the lowest free callsign (their own number counts as free). Returns old and new. */
-export async function moveToLowestFreeCallsign(userId: string): Promise<{ old: number | null; next: number | null }> {
+/**
+ * Gives ONE member the right callsign for their current rank (after a promotion or a restored termination):
+ * keeps their number if it already fits, otherwise the lowest free number in their rank's block.
+ */
+export async function assignCallsignForMember(userId: string) {
+  const [member, roles] = await Promise.all([fetchGuildMember(userId), fetchGuildRoles()]);
+  const rank = memberRank(member.roles, rankRoleMap(roles));
   const mine = await queryOne<{ callsign: number }>(`SELECT callsign FROM roster_callsigns WHERE user_id=$1`, [userId]);
-  const taken = new Set(
-    (await query<{ callsign: number }>(`SELECT callsign FROM roster_callsigns WHERE user_id <> $1`, [userId])).map((r) =>
-      Number(r.callsign),
-    ),
-  );
-  const next = freeCallsigns(taken).next();
-  if (next.done) return { old: mine ? Number(mine.callsign) : null, next: mine ? Number(mine.callsign) : null };
-  await query(
-    `INSERT INTO roster_callsigns (user_id, callsign) VALUES ($1,$2)
-     ON CONFLICT (user_id) DO UPDATE SET callsign=EXCLUDED.callsign, assigned_at=now()`,
-    [userId, next.value],
-  );
+  const old = mine ? Number(mine.callsign) : null;
+
+  let next: number | null = null;
+  if (rank) {
+    if (inBlock(old, rank)) next = old;
+    else {
+      const taken = new Set(
+        (await query<{ callsign: number }>(`SELECT callsign FROM roster_callsigns WHERE user_id <> $1`, [userId])).map((r) =>
+          Number(r.callsign),
+        ),
+      );
+      next = lowestFree(rank, taken);
+    }
+  }
+  await saveCallsign(userId, next);
+
+  const desired = nicknameFor(next, baseName(member));
+  let nickError: string | null = null;
+  if ((member.nick ?? null) !== desired && !(member.nick === null && next === null)) {
+    await setNickname(userId, desired).catch((e) => (nickError = explain(e)));
+  }
   cache = null;
-  return { old: mine ? Number(mine.callsign) : null, next: next.value };
+  return { old, next, rank: rank ? rankInfo(rank).label : null, full: !!rank && next === null, nickError };
 }
 
 export async function releaseCallsign(userId: string) {

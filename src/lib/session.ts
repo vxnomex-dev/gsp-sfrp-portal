@@ -68,8 +68,8 @@ function devAccess(as: string): { permissions: Permission[]; labels: string[] } 
     public: { permissions: [], labels: [] },
     employee: { permissions: ["portal"], labels: ["Department Personnel"] },
     command: { permissions: ["portal", "applications", "content"], labels: ["High Command"] },
-    psb: { permissions: ["portal", "reports"], labels: ["Professional Standards Bureau"] },
-    all: { permissions: ["portal", "applications", "content", "reports"], labels: ["High Command", "Professional Standards Bureau"] },
+    psb: { permissions: ["portal", "reports"], labels: ["Human Resources"] },
+    all: { permissions: ["portal", "applications", "content", "reports"], labels: ["High Command", "Human Resources"] },
   };
   return map[as] ?? map.public;
 }

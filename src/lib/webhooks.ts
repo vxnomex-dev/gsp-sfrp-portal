@@ -58,12 +58,12 @@ export type ReportWebhookInput = {
 };
 
 export function buildReportMessage(r: ReportWebhookInput): Component[] {
-  const ref = `PSB-${String(r.id).padStart(4, "0")}`;
+  const ref = `HR-${String(r.id).padStart(4, "0")}`;
   const roleId = env.pingRoles.reports;
   return [
     ...(roleId ? [text(`<@&${roleId}>`)] : []),
     container([
-      text(`## 🛡️ New Employee Report\n-# ${ref} • Professional Standards Bureau • <t:${unix()}:f>`),
+      text(`## 🛡️ New Employee Report\n-# ${ref} • Human Resources • <t:${unix()}:f>`),
       divider(),
       text(
         `**Trooper reported:** ${clean(r.trooperName, 80)}\n` +
@@ -81,7 +81,7 @@ export function buildReportMessage(r: ReportWebhookInput): Component[] {
           `**Reporter Roblox:** ${clean(r.reporterRoblox, 40)}`,
       ),
       divider(true),
-      text(`-# Confidential — PSB only. Open the case in the [GSP Portal](${env.baseUrl}/portal/reports/${r.id}).`),
+      text(`-# Confidential — Human Resources only. Open the case in the [GSP Portal](${env.baseUrl}/portal/reports/${r.id}).`),
     ]),
   ];
 }

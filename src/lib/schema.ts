@@ -65,6 +65,10 @@ export const SCHEMA_SQL = [
     sort_order INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`,
+  // Professional Standards Bureau was renamed to Human Resources
+  `UPDATE divisions SET name='Human Resources', abbreviation='HR',
+     summary=replace(summary, 'PSB investigates', 'HR investigates')
+   WHERE slug='psb' AND name='Professional Standards Bureau'`,
   `CREATE TABLE IF NOT EXISTS tickets (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,
@@ -189,10 +193,10 @@ const DIVISIONS = [
   },
   {
     slug: "psb",
-    name: "Professional Standards Bureau",
-    abbreviation: "PSB",
+    name: "Human Resources",
+    abbreviation: "HR",
     summary:
-      "The department's internal affairs office. PSB investigates complaints against troopers and protects the integrity of the Patrol.",
+      "The department's internal affairs office. HR investigates complaints against troopers and protects the integrity of the Patrol.",
     duties:
       "Investigation of public complaints\nInternal misconduct investigations\nPolicy compliance reviews\nRecommendations for corrective action",
     restricted: true,

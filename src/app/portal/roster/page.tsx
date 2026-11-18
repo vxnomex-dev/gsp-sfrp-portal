@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
 import { guard } from "../guard";
-import { buildRoster, getLastSync, getRankRoleSetting, isRankRole } from "@/lib/roster";
+import { RANKS, buildRoster, getLastSync } from "@/lib/roster";
 import { fmtDate } from "@/lib/format";
-import { RankRolesForm, SyncForms } from "./forms";
+import { SyncForms } from "./forms";
 
 export const maxDuration = 300;
 
@@ -20,14 +20,16 @@ async function RosterSettings() {
   const g = await guard("content", "/portal/roster");
   if (!g.viewer) return g.denied;
 
-  let roles: { id: string; name: string; position: number }[] = [];
   let error: string | null = null;
+  let detected = new Map<string, string[]>();
+  let counts = new Map<string, number>();
   try {
-    roles = (await buildRoster()).roles.filter((r) => r.name !== "@everyone");
+    const r = await buildRoster();
+    detected = r.detected;
+    counts = new Map(RANKS.map((k) => [k.key, r.entries.filter((e) => e.rank === k.key).length]));
   } catch (e) {
     error = (e as Error).message;
   }
-  const picked = await getRankRoleSetting();
   const last = await getLastSync();
 
   return (
@@ -58,6 +60,16 @@ async function RosterSettings() {
               Last {last.reissued ? "re-issue" : "sync"}: {fmtDate(last.at)} — {last.members} members, {last.newCallsigns} new
               callsigns, {last.nicknamesUpdated} nicknames updated.
             </div>
+            {last.noSpot.length > 0 && (
+              <div className="mt-3">
+                <div className="field-label">No open spot</div>
+                <ul className="list-disc space-y-1 pl-5">
+                  {last.noSpot.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {last.failures.length > 0 && (
               <div className="mt-3">
                 <div className="field-label">Couldn&apos;t rename</div>
@@ -75,18 +87,37 @@ async function RosterSettings() {
       </div>
 
       <div className="card space-y-4 p-6">
-        <h3 className="font-display text-xl uppercase text-navy-ink">Rank roles</h3>
+        <h3 className="font-display text-xl uppercase text-navy-ink">Callsign plan</h3>
         <p className="text-muted-foreground">
-          Ranks decide the order within each section. By default any role with a rank word in its name (Colonel, Major,
-          Captain, Lieutenant, Sergeant, Corporal, Trooper, Cadet…) counts. Tick roles below to choose them yourself.
-          Higher in Discord = higher in the roster.
+          Callsigns follow each member&apos;s <strong>rank role</strong>. Ranks are recognised from the Discord role name.
+          If a rank shows &ldquo;not found&rdquo;, the role is named differently — tell the developer the exact name.
         </p>
-        {roles.length > 0 && (
-          <RankRolesForm
-            usingAuto={!picked}
-            roles={roles.map((r) => ({ id: r.id, name: r.name, checked: isRankRole(r as never, picked) }))}
-          />
-        )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-border font-display text-xs uppercase tracking-wider text-navy">
+              <tr>
+                <th className="py-2 pr-4">Rank</th>
+                <th className="py-2 pr-4">Callsigns</th>
+                <th className="py-2 pr-4">Spots</th>
+                <th className="py-2 pr-4">Members</th>
+                <th className="py-2">Discord role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {RANKS.map((r) => (
+                <tr key={r.key} className="border-b border-border last:border-0">
+                  <td className="py-2 pr-4 font-semibold text-navy-ink">{r.label}</td>
+                  <td className="py-2 pr-4">{r.block[0] === r.block[1] ? r.block[0] : `${r.block[0]}–${r.block[1]}`}</td>
+                  <td className="py-2 pr-4">{r.block[1] - r.block[0] + 1}</td>
+                  <td className="py-2 pr-4">{counts.get(r.key) ?? 0}</td>
+                  <td className="py-2">
+                    {detected.get(r.key)?.join(", ") ?? <span className="text-destructive">not found</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

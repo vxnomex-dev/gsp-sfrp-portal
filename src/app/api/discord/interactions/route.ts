@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
 
         case "infraction": {
           if (!canInfract(i.member)) {
-            return ephemeral("❌ You don't have permission to issue or void infractions. Only the Professional Standards Bureau and the Office of the Colonel can.");
+            return ephemeral("❌ You don't have permission to issue or void infractions. Only Human Resources and the Office of the Colonel can.");
           }
           const sub = subOptions(i)?.name;
           const member = i.member;

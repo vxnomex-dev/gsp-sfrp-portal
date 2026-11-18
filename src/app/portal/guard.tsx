@@ -9,7 +9,7 @@ type GuardResult = { viewer: Viewer; denied?: undefined } | { viewer?: undefined
 const messages: Record<Permission, string> = {
   portal: "The employee portal is only available to members of the Georgia State Patrol.",
   applications: "Only command staff and application reviewers can view cadet applications.",
-  reports: "Employee reports are restricted to the Professional Standards Bureau.",
+  reports: "Employee reports are restricted to Human Resources.",
   content: "Only command staff can edit website content.",
 };
 
