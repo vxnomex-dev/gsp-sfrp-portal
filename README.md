@@ -1,0 +1,93 @@
+# Georgia State Patrol — South Fulton Roleplay (ERLC)
+
+Website + employee portal for the Georgia State Patrol in South Fulton Roleplay.
+
+**Public pages:** Home · Command Staff · Divisions · Cadet Application · Report a Trooper
+**Employee portal** (Discord login, permissions synced from Discord roles):
+
+| Discord role | What they can do on the site |
+|---|---|
+| Supervisor, Patrol, Department Personnel | Open the employee portal |
+| Command | Portal **+** view / accept / deny cadet applications |
+| Office of the Colonel, High Command | Applications **+** edit Command Staff and Divisions pages (High Command is pinged on new applications) |
+| Professional Standards Bureau (`1558194098995732496`) | **Only role** that can see and work trooper reports (pinged on new reports) |
+
+Role changes in Discord apply on the site within about 60 seconds.
+
+---
+
+## 1. Create the Discord application + bot (≈10 minutes)
+
+The bot never has to be "running" — the website only uses its token to look up members' roles
+(and to DM applicants when they're accepted/denied). There is nothing to host for the bot.
+
+1. Go to <https://discord.com/developers/applications> → **New Application** → name it `GSP Portal`.
+2. **OAuth2** tab:
+   - Copy **Client ID** → `DISCORD_CLIENT_ID`
+   - Click **Reset Secret**, copy it → `DISCORD_CLIENT_SECRET`
+   - Under **Redirects**, add both:
+     - `http://localhost:3000/api/auth/callback` (for testing on your PC)
+     - `https://YOUR-SITE-URL/api/auth/callback` (your live URL, once you have it)
+3. **Bot** tab:
+   - Click **Reset Token**, copy it → `DISCORD_BOT_TOKEN` (never share this)
+   - Turn **Public Bot** off
+   - Turn on **Server Members Intent**
+4. **Invite the bot to South Fulton Roleplay:** OAuth2 → **URL Generator** → tick `bot` →
+   no permissions needed → open the generated link and add it to your server.
+5. In Discord: **User Settings → Advanced → Developer Mode = ON.** Then:
+   - The server ID and all role IDs are already filled in. You only need to change them if you
+     create new roles (see `ROLE_*` in `.env.local`).
+
+## 2. Run it on your computer (optional, to try it first)
+
+Needs [Node.js 20+](https://nodejs.org).
+
+```bash
+npm install
+cp .env.example .env.local   # skip if .env.local already exists, then fill it in
+npm run dev
+```
+
+Open <http://localhost:3000>. No database setup is needed locally — a built-in one is stored in `./.data`.
+
+Want to click around the portal before Discord is set up? Put `DEV_LOGIN=true` in `.env.local` and leave
+`DISCORD_CLIENT_ID` empty. "Login" will then let you pick a fake role. This never works on the live site.
+
+## 3. Put it online (free: Vercel + Neon)
+
+1. **Database:** create a free Postgres database at <https://neon.tech> → copy the connection string → `DATABASE_URL`.
+   Tables are created automatically the first time the site runs.
+2. **Code:** upload this folder to a **private** GitHub repository.
+3. **Hosting:** <https://vercel.com> → **Add New → Project** → import the repo.
+   Before deploying, open **Environment Variables** and add every variable from `.env.local`
+   (with `PUBLIC_BASE_URL` set to your Vercel URL, and `DEV_LOGIN` removed or `false`).
+4. Deploy. Then add `https://YOUR-SITE.vercel.app/api/auth/callback` to the Discord app's OAuth2 Redirects.
+
+Using a custom domain later? Update `PUBLIC_BASE_URL` and add the new callback URL to Discord.
+
+## 4. Pictures
+
+Your seal and patrol photos are in `public/images/`. Which photo goes where (home hero, mission section,
+page banners, the "On Patrol" strip) is set in `src/lib/site.ts`. To swap one, drop a new file into
+`public/images/` and change the path there.
+
+Command staff photos can be set from the portal (**Portal → Website Content → Photo URL**), using either a
+`/images/...` path or an `https://` link.
+
+## Webhooks
+
+New applications and reports are posted to Discord as **Components V2** messages (container + sections, not
+classic embeds) and ping the matching role. The webhook URLs live in environment variables only — they are never
+sent to visitors' browsers. Anyone who has a webhook URL can post into that channel, so if one leaks, delete it in
+Discord (Channel Settings → Integrations → Webhooks) and paste the new URL into your env vars.
+
+## Where to change things
+
+| What | File |
+|---|---|
+| Site name, images, cadet requirements, minimum age, Discord invite | `src/lib/site.ts` |
+| Cadet application questions, report categories | `src/lib/forms.ts` |
+| Discord message layout | `src/lib/webhooks.ts` |
+| Who can do what | `src/lib/permissions.ts` |
+| Colors and fonts | `src/app/globals.css` |
+| Command staff, division commanders, recruitment status | Live on the site: **Portal → Website Content** |

@@ -1,0 +1,174 @@
+@import "@fontsource/oswald/400.css";
+@import "@fontsource/oswald/500.css";
+@import "@fontsource/oswald/600.css";
+@import "@fontsource/oswald/700.css";
+@import "@fontsource/source-sans-3/400.css";
+@import "@fontsource/source-sans-3/600.css";
+@import "@fontsource/source-sans-3/700.css";
+@import "tailwindcss";
+
+/* Theme matched to the Lovable prototype (navy + gold, Oswald + Source Sans 3) */
+@theme {
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-sans: "Source Sans 3", system-ui, sans-serif;
+
+  --color-background: oklch(98.5% 0.003 250);
+  --color-foreground: oklch(21% 0.04 260);
+  --color-card: oklch(100% 0 0);
+  --color-muted: oklch(95% 0.008 250);
+  --color-muted-foreground: oklch(50% 0.03 258);
+  --color-border: oklch(90% 0.012 252);
+  --color-panel: oklch(93.5% 0.012 255);
+
+  --color-navy: oklch(33% 0.13 264);
+  --color-navy-deep: oklch(24% 0.1 264);
+  --color-navy-ink: oklch(20% 0.08 264);
+  --color-gold: oklch(79% 0.15 84);
+  --color-gold-foreground: oklch(24% 0.06 264);
+  --color-destructive: oklch(55% 0.21 27);
+  --color-success: oklch(55% 0.14 155);
+
+  --radius-sm: 0.25rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+@layer components {
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+  }
+  .container-x {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 80rem;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 1024px) {
+    .container-x {
+      padding-inline: 2.5rem;
+    }
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.95rem;
+    border-radius: var(--radius-sm);
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      border-color 0.15s,
+      opacity 0.15s;
+    cursor: pointer;
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .btn-gold {
+    background: var(--color-gold);
+    color: var(--color-gold-foreground);
+  }
+  .btn-gold:hover:not(:disabled) {
+    background: oklch(84% 0.14 86);
+  }
+  .btn-navy {
+    background: var(--color-navy);
+    color: white;
+  }
+  .btn-navy:hover:not(:disabled) {
+    background: var(--color-navy-deep);
+  }
+  .btn-outline-light {
+    border: 1px solid oklch(100% 0 0 / 0.6);
+    color: white;
+  }
+  .btn-outline-light:hover {
+    background: oklch(100% 0 0 / 0.1);
+  }
+  .btn-outline {
+    border: 1px solid var(--color-border);
+    color: var(--color-navy);
+    background: white;
+  }
+  .btn-outline:hover {
+    border-color: var(--color-navy);
+  }
+  .btn-danger {
+    background: var(--color-destructive);
+    color: white;
+  }
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 1px 2px oklch(21% 0.04 260 / 0.06);
+  }
+  .card-gold {
+    border-top: 3px solid var(--color-gold);
+  }
+  .field-label {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-navy);
+    margin-bottom: 0.4rem;
+  }
+  .field {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    background: white;
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+    outline: none;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+  }
+  .field:focus {
+    border-color: var(--color-navy);
+    box-shadow: 0 0 0 3px oklch(33% 0.13 264 / 0.15);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--color-destructive);
+  }
+  textarea.field {
+    min-height: 7rem;
+    resize: vertical;
+  }
+  .hero-pattern {
+    background-color: var(--color-navy);
+    background-image:
+      linear-gradient(115deg, oklch(24% 0.1 264 / 0.95) 0%, oklch(33% 0.13 264 / 0.75) 55%, oklch(33% 0.13 264 / 0.55) 100%),
+      repeating-linear-gradient(135deg, oklch(100% 0 0 / 0.035) 0 2px, transparent 2px 22px);
+  }
+}
