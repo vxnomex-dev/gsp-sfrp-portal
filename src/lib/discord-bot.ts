@@ -147,6 +147,10 @@ export function createGuildTextChannel(opts: { name: string; parentId: string; o
   });
 }
 
+export function renameChannel(channelId: string, name: string) {
+  return bot<{ id: string; name: string }>(`/channels/${channelId}`, { method: "PATCH", body: { name } });
+}
+
 export function deleteChannel(channelId: string) {
   return bot(`/channels/${channelId}`, { method: "DELETE" });
 }

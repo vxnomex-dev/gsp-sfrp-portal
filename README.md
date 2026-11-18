@@ -97,7 +97,8 @@ Decisions made in the portal update the Discord message too.
   the bot and that panel's team, and replies privately with a link to the new channel.
 - General → Supervisor role. Divisional and Command → High Command + Command roles.
 - Office of the Colonel, High Command and Command can see, claim and close **any** ticket (`CLOSE_ANY_ROLES`).
-- Staff commands inside a ticket: `/claim`, `/close [reason]`, `/close-request [reason]` (opener confirms or keeps it open).
+- Staff commands inside a ticket: `/claim`, `/close [reason]`, `/close-request [reason]` (opener confirms or keeps it open),
+  `/rename name` (Discord allows 2 renames per channel every 10 minutes).
   Closed tickets are deleted after 5 seconds. An HTML transcript is sent to the opener by DM and posted in
   #ticket-transcripts (`TRANSCRIPT_CHANNEL_ID` in `src/lib/tickets.ts`).
 - Transcripts need **Message Content Intent** turned on (Developer Portal → Bot), otherwise message text is blank.

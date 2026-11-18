@@ -247,7 +247,7 @@ export async function registerDiscordCommands(): Promise<FormState> {
   const { SLASH_COMMANDS } = await import("@/lib/tickets");
   try {
     const result = await registerGuildCommands(SLASH_COMMANDS);
-    return { ok: true, message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /support-panel.` };
+    return { ok: true, message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /rename, /support-panel.` };
   } catch (e) {
     return { message: `Discord rejected the request: ${(e as Error).message}` };
   }

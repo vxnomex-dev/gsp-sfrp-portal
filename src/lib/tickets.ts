@@ -4,8 +4,10 @@ import { query, queryOne } from "./db";
 import { site } from "./site";
 import { IS_COMPONENTS_V2, clean, container, divider, fileComponent, text, unix, type Component } from "./components";
 import {
+  DiscordError,
   createGuildTextChannel,
   deleteChannel,
+  renameChannel,
   editInteractionResponse,
   fetchAllMessages,
   postChannelMessage,
@@ -128,6 +130,7 @@ export type Ticket = {
   status: "open" | "closed";
   claimed_by_id: string | null;
   claimed_by_name: string | null;
+  channel_name: string | null;
   created_at: string | Date;
 };
 
@@ -268,7 +271,7 @@ function welcomeMessage(t: { id: number; kind: TicketKind; inquiry: string }, me
           { type: 2, style: 4, label: "Close", custom_id: IDS.close },
         ],
       },
-      text(`-# Ticket #${t.id} • Staff: \`/claim\` • \`/close\` • \`/close-request\``),
+      text(`-# Ticket #${t.id} • Staff: \`/claim\` • \`/close\` • \`/close-request\` • \`/rename\``),
     ]),
   ];
 }
@@ -312,7 +315,7 @@ export async function openTicket(interactionToken: string, kind: TicketKind, mem
       overwrites,
       topic: `${cfg.label} ticket #${id} — opened by ${u.username} (${u.id})`,
     });
-    await query(`UPDATE tickets SET channel_id=$1 WHERE id=$2`, [channel.id, id]);
+    await query(`UPDATE tickets SET channel_id=$1, channel_name=$2 WHERE id=$3`, [channel.id, channel.name, id]);
 
     await postChannelMessage(channel.id, {
       components: welcomeMessage({ id, kind, inquiry }, member),
@@ -359,6 +362,45 @@ export async function claimTicket(channelId: string, member: Member): Promise<Re
   };
 }
 
+/** /rename — renames the ticket channel. Discord allows 2 renames per channel every 10 minutes. */
+export async function renameTicket(channelId: string, member: Member, requested: string): Promise<Reply> {
+  const t = await getTicketByChannel(channelId);
+  if (!t) return privateReply("This command only works inside an open support ticket.");
+  if (!canClose(member, t.kind)) return privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can rename this ticket.`);
+
+  const name = requested
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+  if (!name) return privateReply("That name doesn't contain any usable characters. Use letters, numbers and dashes.");
+
+  try {
+    const ch = await renameChannel(channelId, name);
+    await query(`UPDATE tickets SET channel_name=$1 WHERE id=$2`, [ch.name, t.id]);
+    return {
+      type: 4,
+      data: v2([container([text(`✏️ <@${member.user.id}> renamed this ticket to **#${ch.name}**.`)], false)]),
+    };
+  } catch (e) {
+    if (e instanceof DiscordError && e.status === 429) {
+      const secs = Number(JSON.parse(e.body || "{}").retry_after ?? 600);
+      const mins = Math.max(1, Math.ceil(secs / 60));
+      return privateReply(
+        `Discord only allows renaming a channel twice every 10 minutes. Try again in about ${mins} minute${mins === 1 ? "" : "s"}.`,
+      );
+    }
+    if (e instanceof DiscordError && e.status === 403) {
+      return privateReply("I don't have permission to rename this channel (Manage Channels).");
+    }
+    console.error("[tickets] rename failed", e);
+    return privateReply("Something went wrong renaming the ticket. Please try again.");
+  }
+}
+
 /** Responds right away, then closes the channel a few seconds later (see finishClose). */
 export async function startClose(channelId: string, member: Member, reason: string | null, { byOpener = false } = {}) {
   const t = await getTicketByChannel(channelId);
@@ -394,7 +436,7 @@ export async function finishClose(t: Ticket, member: Member, reason: string) {
     [member.user.id, displayName(member), reason, t.id],
   );
   const cfg = TICKET_TYPES[t.kind];
-  const chName = channelName(cfg.prefix, t.opener_name);
+  const chName = t.channel_name ?? channelName(cfg.prefix, t.opener_name);
 
   // Give Discord a moment so the "Closing Ticket" notice is included, then build the transcript.
   await new Promise((r) => setTimeout(r, 1500));
@@ -543,6 +585,13 @@ export const SLASH_COMMANDS = [
     type: 1,
     contexts: [0],
     options: [reasonOption("Why you think the ticket can be closed")],
+  },
+  {
+    name: "rename",
+    description: "Rename this support ticket",
+    type: 1,
+    contexts: [0],
+    options: [{ type: 3, name: "name", description: "New ticket name (e.g. srt-transfer-atlas)", required: true, min_length: 1, max_length: 100 }],
   },
   {
     name: "support-panel",

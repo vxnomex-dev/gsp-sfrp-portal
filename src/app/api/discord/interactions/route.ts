@@ -20,6 +20,7 @@ import {
   openTicket,
   postPanel,
   privateReply,
+  renameTicket,
   startClose,
   type Member,
   type TicketKind,
@@ -178,6 +179,8 @@ export async function POST(req: NextRequest) {
           return close(i, channelId, option(i, "reason"), false);
         case "close-request":
           return json(await closeRequest(channelId, i.member, option(i, "reason")));
+        case "rename":
+          return json(await renameTicket(channelId, i.member, option(i, "name") ?? ""));
         case "support-panel":
           return json(await postPanel(channelId));
         default:

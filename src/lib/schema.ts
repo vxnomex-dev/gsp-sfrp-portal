@@ -86,6 +86,7 @@ export const SCHEMA_SQL = [
     callsign INTEGER NOT NULL UNIQUE,
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  `ALTER TABLE tickets ADD COLUMN IF NOT EXISTS channel_name TEXT`,
   `CREATE INDEX IF NOT EXISTS tickets_open_idx ON tickets (opener_id, kind, status)`,
 ];
 
