@@ -1,6 +1,6 @@
 import "server-only";
 import { env } from "./env";
-import { IS_COMPONENTS_V2, RED, clean, container, divider, quote, text, unix, type Component } from "./components";
+import { IS_COMPONENTS_V2, clean, container, divider, quote, text, unix, type Component } from "./components";
 
 /**
  * Posts a Components V2 message through a plain channel webhook.
@@ -62,7 +62,7 @@ export function buildReportMessage(r: ReportWebhookInput): Component[] {
   const roleId = env.pingRoles.reports;
   return [
     ...(roleId ? [text(`<@&${roleId}>`)] : []),
-    container(RED, [
+    container([
       text(`## 🛡️ New Employee Report\n-# ${ref} • Professional Standards Bureau • <t:${unix()}:f>`),
       divider(),
       text(

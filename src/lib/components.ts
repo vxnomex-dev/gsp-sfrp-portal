@@ -9,9 +9,6 @@ import { env } from "./env";
  */
 
 export const IS_COMPONENTS_V2 = 1 << 15;
-export const GOLD = 0xe8b130;
-export const RED = 0xc8372d;
-export const GREEN = 0x2e9d5b;
 
 export type Component = Record<string, unknown>;
 
@@ -28,12 +25,16 @@ export const banner = (): Component => ({
   items: [{ media: { url: `${env.baseUrl}/images/gsp-banner.jpg` }, description: "Georgia State Patrol" }],
 });
 
-/** A Components V2 container. Every message gets the GSP banner at the top unless `withBanner` is false. */
-export const container = (accent: number, components: Component[], withBanner = true): Component => ({
+/**
+ * A Components V2 container (no side colour). Gets the GSP banner at the top unless `withBanner` is false.
+ */
+export const container = (components: Component[], withBanner = true): Component => ({
   type: 17,
-  accent_color: accent,
   components: withBanner ? [banner(), ...components] : components,
 });
+/** A file attached to the same message (Components V2 File component). */
+export const fileComponent = (name: string): Component => ({ type: 13, file: { url: `attachment://${name}` } });
+
 export const buttonRow = (buttons: { id: string; label: string; style: 1 | 2 | 3 | 4; emoji?: string }[]): Component => ({
   type: 1,
   components: buttons.map((b) => ({

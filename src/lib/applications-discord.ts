@@ -5,9 +5,6 @@ import { query, queryOne } from "./db";
 import { avatarUrl } from "./discord";
 import { appRef } from "./forms";
 import {
-  GOLD,
-  GREEN,
-  RED,
   buttonRow,
   clean,
   container,
@@ -86,7 +83,6 @@ type AppForMessage = Pick<
 
 export function buildApplicationMessage(a: AppForMessage, { withButtons }: { withButtons: boolean }): V2Message {
   const decided = a.status === "accepted" || a.status === "denied";
-  const accent = a.status === "accepted" ? GREEN : a.status === "denied" ? RED : GOLD;
   const roleId = env.pingRoles.applications;
   const submitted = unix(a.created_at ? new Date(a.created_at) : new Date());
 
@@ -118,7 +114,7 @@ export function buildApplicationMessage(a: AppForMessage, { withButtons }: { wit
     allowed_mentions: { parse: [], roles: roleId ? [roleId] : [], users: [a.discord_id] },
     components: [
       text(`${roleId ? `<@&${roleId}> ` : ""}<@${a.discord_id}>`),
-      container(accent, [
+      container([
         section(
           `## 🚔 New Cadet Application\n-# ${appRef(a.id)} • Georgia State Patrol • <t:${submitted}:f>\n\n` +
             `**Applicant:** <@${a.discord_id}> (\`${clean(a.discord_username, 40)}\`)\n` +
@@ -169,7 +165,7 @@ export async function announceApplication(a: AppForMessage): Promise<boolean> {
 
 export function acceptedDM(a: { id: number; discord_id: string }): Component[] {
   return [
-    container(GREEN, [
+    container([
       text(
         `## ✅ Cadet Application Accepted\n` +
           `Congratulations <@${a.discord_id}>! Your application to the **Georgia State Patrol** has been **accepted**.\n-# ${appRef(a.id)}`,
@@ -189,7 +185,7 @@ export function acceptedDM(a: { id: number; discord_id: string }): Component[] {
 
 export function deniedDM(a: { id: number; discord_id: string; denial_reason: string | null }): Component[] {
   return [
-    container(RED, [
+    container([
       text(
         `## Cadet Application Denied\n` +
           `Thank you for your interest in the **Georgia State Patrol**. Unfortunately, your application did not pass this time.`,

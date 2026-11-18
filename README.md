@@ -97,7 +97,9 @@ Decisions made in the portal update the Discord message too.
   the bot and that panel's team, and replies privately with a link to the new channel.
 - General → Supervisor role. Divisional and Command → High Command + Command roles.
 - Staff commands inside a ticket: `/claim`, `/close [reason]`, `/close-request [reason]` (opener confirms or keeps it open).
-  Closed tickets are deleted after 5 seconds and the opener gets a DM with the reason.
+  Closed tickets are deleted after 5 seconds. An HTML transcript is sent to the opener by DM and posted in
+  #ticket-transcripts (`TRANSCRIPT_CHANNEL_ID` in `src/lib/tickets.ts`).
+- Transcripts need **Message Content Intent** turned on (Developer Portal → Bot), otherwise message text is blank.
 - Register the commands once from **Portal → Discord Bot**. Categories and roles live in `src/lib/tickets.ts`.
 - Bot permissions needed: Manage Channels, Manage Roles, View Channels, Send Messages, Embed Links, Attach Files,
   Read Message History, Mention All Roles.

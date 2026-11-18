@@ -2,15 +2,22 @@ import "server-only";
 import { env } from "./env";
 import { query, queryOne } from "./db";
 import { site } from "./site";
-import { GOLD, GREEN, RED, IS_COMPONENTS_V2, clean, container, divider, text, unix, type Component } from "./components";
+import { IS_COMPONENTS_V2, clean, container, divider, fileComponent, text, unix, type Component } from "./components";
 import {
   createGuildTextChannel,
   deleteChannel,
   editInteractionResponse,
+  fetchAllMessages,
   postChannelMessage,
+  postChannelMessageWithFile,
   sendDirectMessageV2,
+  type FileUpload,
   type Overwrite,
 } from "./discord-bot";
+import { buildTranscript } from "./transcripts";
+
+/** #ticket-transcripts — every closed ticket's transcript is posted here. */
+export const TRANSCRIPT_CHANNEL_ID = "1572686004882636990";
 
 /* ------------------------------------------------------------------ */
 /* Configuration                                                       */
@@ -114,6 +121,7 @@ export type Ticket = {
   status: "open" | "closed";
   claimed_by_id: string | null;
   claimed_by_name: string | null;
+  created_at: string | Date;
 };
 
 export const displayName = (m: Member) => m.nick || m.user.global_name || m.user.username;
@@ -151,7 +159,7 @@ export const getTicketByChannel = (channelId: string) =>
 
 export function buildPanel(): Component[] {
   return [
-    container(GOLD, [
+    container([
       text(`## Department Assistance`),
       text(
         `> If you need help with anything related to the department, do not hesitate to contact a supervisor or member of command staff. ` +
@@ -228,7 +236,7 @@ function welcomeMessage(t: { id: number; kind: TicketKind; inquiry: string }, me
   const created = unix(snowflakeDate(u.id));
   return [
     text([...cfg.pingRoles.map((r) => `<@&${r}>`), `<@${u.id}>`].join(" ")),
-    container(GOLD, [
+    container([
       text(`## Welcome to ${cfg.label}, <@${u.id}>.`),
       text(
         `> Thank you for contacting ${cfg.label}. A member of our team will review your ticket and assist you as soon as possible. ` +
@@ -332,9 +340,9 @@ export async function claimTicket(channelId: string, member: Member): Promise<Re
     type: 4,
     data: v2(
       [
-        container(GREEN, [
+        container([
           text(`### ✅ Ticket Claimed\n<@${member.user.id}> has claimed this ticket and will be assisting you, <@${t.opener_id}>.`),
-        ]),
+        ], false),
       ],
       { allowed_mentions: { parse: [], users: [t.opener_id] } },
     ),
@@ -359,38 +367,96 @@ export async function startClose(channelId: string, member: Member, reason: stri
     reply: {
       type: 4,
       data: v2([
-        container(RED, [
+        container([
           text(
             `### 🔒 Closing Ticket\nThis ticket was closed by <@${member.user.id}> and will be deleted in **5 seconds**.\n**Reason:** ${clean(why, 300)}`,
           ),
-        ]),
+        ], false),
       ]),
     },
   };
 }
 
 export async function finishClose(t: Ticket, member: Member, reason: string) {
+  const started = Date.now();
   await query(
     `UPDATE tickets SET status='closed', closed_by_id=$1, closed_by_name=$2, close_reason=$3, closed_at=now() WHERE id=$4`,
     [member.user.id, displayName(member), reason, t.id],
   );
-  await new Promise((r) => setTimeout(r, 5000));
-  if (t.channel_id) await deleteChannel(t.channel_id).catch((e) => console.error("[tickets] delete failed", e));
-
   const cfg = TICKET_TYPES[t.kind];
-  await sendDirectMessageV2(t.opener_id, [
-    container(GOLD, [
-      text(`## Ticket Closed\nYour **${cfg.label}** ticket has been closed.`),
-      divider(),
-      text(
-        `> **Ticket:** #${t.id}\n` +
-          `> **Closed by:** ${clean(displayName(member), 40)}\n` +
-          `> **Reason:** ${clean(reason, 300)}`,
-      ),
-      divider(true),
-      text(`-# Need more help? Open a new ticket any time. • Georgia State Patrol — ${site.community}`),
-    ]),
-  ]);
+  const chName = channelName(cfg.prefix, t.opener_name);
+
+  // Give Discord a moment so the "Closing Ticket" notice is included, then build the transcript.
+  await new Promise((r) => setTimeout(r, 1500));
+  let transcript: FileUpload | undefined;
+  let messageCount = 0;
+  if (t.channel_id) {
+    try {
+      const messages = await fetchAllMessages(t.channel_id);
+      messageCount = messages.length;
+      const html = buildTranscript(
+        {
+          ticketId: t.id,
+          kindLabel: cfg.label,
+          channelName: chName,
+          openerId: t.opener_id,
+          openerName: t.opener_name,
+          inquiry: t.inquiry,
+          claimedBy: t.claimed_by_name,
+          closedBy: displayName(member),
+          reason,
+          openedAt: new Date(t.created_at),
+          closedAt: new Date(),
+        },
+        messages,
+      );
+      transcript = { name: `transcript-${chName}-${t.id}.html`, data: html, contentType: "text/html" };
+    } catch (e) {
+      console.error("[tickets] transcript failed", e);
+    }
+  }
+
+  // Staff log in the transcripts channel
+  try {
+    const details =
+      `> **Ticket:** #${t.id} — ${cfg.label}\n` +
+      `> **Opened by:** <@${t.opener_id}> (\`${clean(t.opener_name, 40)}\`)\n` +
+      `> **Claimed by:** ${t.claimed_by_id ? `<@${t.claimed_by_id}>` : "Unclaimed"}\n` +
+      `> **Closed by:** <@${member.user.id}>\n` +
+      `> **Reason:** ${clean(reason, 300)}\n` +
+      `> **Opened:** <t:${unix(new Date(t.created_at))}:f> • **Closed:** <t:${unix()}:f>\n` +
+      `> **Messages:** ${messageCount}`;
+    const log = [container([text(`### 📁 Ticket Closed — ${cfg.label} #${t.id}`), text(details), ...(transcript ? [fileComponent(transcript.name)] : [text("-# Transcript unavailable.")])], false)];
+    if (transcript) await postChannelMessageWithFile(TRANSCRIPT_CHANNEL_ID, { components: log }, transcript);
+    else await postChannelMessage(TRANSCRIPT_CHANNEL_ID, { components: log });
+  } catch (e) {
+    console.error("[tickets] could not post to the transcripts channel", e);
+  }
+
+  // DM the member who opened it
+  await sendDirectMessageV2(
+    t.opener_id,
+    [
+      container([
+        text(`## Ticket Closed\nYour **${cfg.label}** ticket has been closed.`),
+        divider(),
+        text(
+          `> **Ticket:** #${t.id}\n` +
+            `> **Closed by:** ${clean(displayName(member), 40)}\n` +
+            `> **Reason:** ${clean(reason, 300)}`,
+        ),
+        ...(transcript ? [divider(), text(`**Transcript** — open the file below in your browser to read the full conversation.`), fileComponent(transcript.name)] : []),
+        divider(true),
+        text(`-# Need more help? Open a new ticket any time. • Georgia State Patrol — ${site.community}`),
+      ]),
+    ],
+    transcript,
+  );
+
+  // Delete the channel (at least 5 seconds after the closing notice)
+  const wait = 5000 - (Date.now() - started);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  if (t.channel_id) await deleteChannel(t.channel_id).catch((e) => console.error("[tickets] delete failed", e));
 }
 
 export async function closeRequest(channelId: string, member: Member, reason: string | null): Promise<Reply> {
@@ -403,7 +469,7 @@ export async function closeRequest(channelId: string, member: Member, reason: st
     data: v2(
       [
         text(`<@${t.opener_id}>`),
-        container(GOLD, [
+        container([
           text(
             `### Close Request\n<@${member.user.id}> believes this ticket has been resolved and would like to close it.` +
               (why ? `\n**Reason:** ${clean(why, 300)}` : "") +
@@ -416,7 +482,7 @@ export async function closeRequest(channelId: string, member: Member, reason: st
               { type: 2, style: 2, label: "Keep Open", custom_id: IDS.keepOpen },
             ],
           },
-        ]),
+        ], false),
       ],
       { allowed_mentions: { parse: [], users: [t.opener_id] } },
     ),
@@ -434,7 +500,7 @@ export async function keepOpen(channelId: string, member: Member): Promise<Reply
     type: 7, // UPDATE_MESSAGE
     data: {
       components: [
-        container(GOLD, [text(`### Close Request Declined\n<@${member.user.id}> chose to keep this ticket open.`)]),
+        container([text(`### Close Request Declined\n<@${member.user.id}> chose to keep this ticket open.`)], false),
       ],
       allowed_mentions: { parse: [] },
     },

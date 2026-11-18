@@ -65,11 +65,64 @@ export function editChannelMessage(channelId: string, messageId: string, msg: V2
   });
 }
 
+export type FileUpload = { name: string; data: string; contentType: string };
+
+/** Posts a Components V2 message with a file attached (reference it with a File component: attachment://name). */
+export async function postChannelMessageWithFile(channelId: string, msg: V2Message, file: FileUpload) {
+  if (!env.discord.botToken) throw new DiscordError(0, "DISCORD_BOT_TOKEN is not set");
+  const form = new FormData();
+  form.append(
+    "payload_json",
+    JSON.stringify({
+      flags: IS_COMPONENTS_V2,
+      allowed_mentions: { parse: [] },
+      ...msg,
+      attachments: [{ id: 0, filename: file.name }],
+    }),
+  );
+  form.append("files[0]", new Blob([file.data], { type: file.contentType }), file.name);
+  const res = await fetch(`${API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${env.discord.botToken}` },
+    body: form,
+    cache: "no-store",
+  });
+  if (!res.ok) throw new DiscordError(res.status, await res.text());
+  return (await res.json()) as { id: string };
+}
+
+export type DiscordMessage = {
+  id: string;
+  type: number;
+  content: string;
+  timestamp: string;
+  author: { id: string; username: string; global_name?: string | null; avatar?: string | null; bot?: boolean };
+  attachments?: { filename: string; url: string; content_type?: string }[];
+  embeds?: { title?: string; description?: string }[];
+  components?: Record<string, unknown>[];
+};
+
+/** Every message in a channel, oldest first (stops at `max`). Needs the Message Content intent to see message text. */
+export async function fetchAllMessages(channelId: string, max = 2000): Promise<DiscordMessage[]> {
+  const all: DiscordMessage[] = [];
+  let before: string | undefined;
+  while (all.length < max) {
+    const page = await bot<DiscordMessage[]>(
+      `/channels/${channelId}/messages?limit=100${before ? `&before=${before}` : ""}`,
+    );
+    all.push(...page);
+    if (page.length < 100) break;
+    before = page[page.length - 1].id;
+  }
+  return all.reverse();
+}
+
 /** DMs a Components V2 message. Returns false if the user has DMs closed or doesn't share a server with the bot. */
-export async function sendDirectMessageV2(userId: string, components: Component[]): Promise<boolean> {
+export async function sendDirectMessageV2(userId: string, components: Component[], file?: FileUpload): Promise<boolean> {
   try {
     const dm = await bot<{ id: string }>(`/users/@me/channels`, { method: "POST", body: { recipient_id: userId } });
-    await postChannelMessage(dm.id, { components });
+    if (file) await postChannelMessageWithFile(dm.id, { components }, file);
+    else await postChannelMessage(dm.id, { components });
     return true;
   } catch (e) {
     console.error("[dm] failed", e);
