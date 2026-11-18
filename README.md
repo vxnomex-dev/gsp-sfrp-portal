@@ -108,11 +108,13 @@ Decisions made in the portal update the Discord message too.
 
 ## Roster & callsigns
 
-- Public page `/roster`, sorted by **rank** (from Discord role names), with Vacant spots shown for OOTC and Command.
+- Public page `/roster`, sorted by **rank**, with Vacant spots shown for OOTC and Command. Only roles named exactly
+  `𝐆𝐒𝐏 | <Rank>` count as ranks (medals, keys, division ranks and "Active Trooper" are ignored).
 - Callsign blocks (`RANKS` in `src/lib/roster.ts`):
   Colonel 600 · Lt. Colonel 601–602 · Major 610–612 · Captain 620–623 · Lieutenant 630–632 ·
-  Staff Sergeant 700–719 · Sergeant 720–749 · Corporal 750–799 ·
-  Senior Trooper 800–849 · Trooper First Class 850–899 · Trooper 900–959 · Probationary Trooper 960–999.
+  Senior Sergeant 700–719 · Sergeant 720–749 · Corporal 750–799 ·
+  Master Trooper 800–819 · Senior Trooper 820–849 · Trooper First Class 850–899 · Trooper 900–959 ·
+  Probationary Trooper 960–999.
   No rank (e.g. cadets) = no callsign.
 - People keep their callsign while it fits their rank; anyone who changes rank gets the lowest free number in the new
   block. **Portal → Roster & Callsigns → Re-issue** renumbers everyone (current number decides seniority within a rank).

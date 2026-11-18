@@ -23,25 +23,27 @@ export const TIERS = [
 ] as const;
 export type TierKey = (typeof TIERS)[number]["key"];
 
-type Rank = { key: string; label: string; tier: TierKey; block: readonly [number, number]; match: RegExp };
+type Rank = { key: string; label: string; tier: TierKey; block: readonly [number, number]; name: string };
 
 /**
- * Ranks top to bottom. A member's rank comes from their Discord role NAME. Each rank owns a block of
- * callsigns; for the Office of the Colonel and Command, empty numbers show on the roster as Vacant.
+ * Ranks top to bottom. ONLY roles named "𝐆𝐒𝐏 | <rank>" count (medals, keys, division ranks like "𝐍𝐇 | Corporal",
+ * "Active Trooper" etc. are ignored). Each rank owns a block of callsigns; for the Office of the Colonel and
+ * Command, empty numbers show on the roster as Vacant.
  */
 export const RANKS = [
-  { key: "colonel", label: "Colonel", tier: "ootc", block: [600, 600], match: /\bcolonel\b/i },
-  { key: "ltcol", label: "Lieutenant Colonel", tier: "ootc", block: [601, 602], match: /\b(lieutenant|lt)\.?\s*col(onel)?\b/i },
-  { key: "major", label: "Major", tier: "command", block: [610, 612], match: /\b(major|maj)\b/i },
-  { key: "captain", label: "Captain", tier: "command", block: [620, 623], match: /\b(captain|capt|cpt)\b/i },
-  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [630, 632], match: /\b(lieutenant|lt)\b/i },
-  { key: "ssgt", label: "Staff Sergeant", tier: "supervisors", block: [700, 719], match: /\b(staff\s*(sergeant|sgt)|ssgt)\b/i },
-  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [720, 749], match: /\b(sergeant|sgt)\b/i },
-  { key: "cpl", label: "Corporal", tier: "supervisors", block: [750, 799], match: /\b(corporal|cpl)\b/i },
-  { key: "srtpr", label: "Senior Trooper", tier: "patrol", block: [800, 849], match: /\b(senior|sr)\.?\s*(trooper|tpr)\b/i },
-  { key: "tfc", label: "Trooper First Class", tier: "patrol", block: [850, 899], match: /\b(trooper\s*first\s*class|tfc)\b/i },
-  { key: "tpr", label: "Trooper", tier: "patrol", block: [900, 959], match: /\b(trooper|tpr)\b/i },
-  { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [960, 999], match: /\b(probationary|probie)\b/i },
+  { key: "colonel", label: "Colonel", tier: "ootc", block: [600, 600], name: "colonel" },
+  { key: "ltcol", label: "Lieutenant Colonel", tier: "ootc", block: [601, 602], name: "lieutenant colonel" },
+  { key: "major", label: "Major", tier: "command", block: [610, 612], name: "major" },
+  { key: "captain", label: "Captain", tier: "command", block: [620, 623], name: "captain" },
+  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [630, 632], name: "lieutenant" },
+  { key: "srsgt", label: "Senior Sergeant", tier: "supervisors", block: [700, 719], name: "senior sergeant" },
+  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [720, 749], name: "sergeant" },
+  { key: "cpl", label: "Corporal", tier: "supervisors", block: [750, 799], name: "corporal" },
+  { key: "mtpr", label: "Master Trooper", tier: "patrol", block: [800, 819], name: "master trooper" },
+  { key: "srtpr", label: "Senior Trooper", tier: "patrol", block: [820, 849], name: "senior trooper" },
+  { key: "tfc", label: "Trooper First Class", tier: "patrol", block: [850, 899], name: "trooper first class" },
+  { key: "tpr", label: "Trooper", tier: "patrol", block: [900, 959], name: "trooper" },
+  { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [960, 999], name: "probationary trooper" },
 ] as const satisfies readonly Rank[];
 export type RankKey = (typeof RANKS)[number]["key"];
 
@@ -49,8 +51,8 @@ const RANK_ORDER = RANKS.map((r) => r.key) as RankKey[];
 const rankIndex = (k: RankKey | null) => (k ? RANK_ORDER.indexOf(k) : RANK_ORDER.length);
 export const rankInfo = (k: RankKey): Rank => RANKS.find((r) => r.key === k)!;
 
-/** Most specific names are checked first ("Lieutenant Colonel" before "Lieutenant", "Staff Sergeant" before "Sergeant"…). */
-const MATCH_ORDER: RankKey[] = ["ltcol", "colonel", "major", "captain", "lieutenant", "ssgt", "sgt", "cpl", "srtpr", "tfc", "prob", "tpr"];
+/** Rank roles look like "𝐆𝐒𝐏 | Colonel" (the fancy letters become plain "GSP" after NFKC normalisation). */
+const RANK_ROLE_PREFIX = /^\s*GSP\s*[|│¦:\-–—]\s*/i;
 
 /** Department roles: anyone holding one of these is on the roster even without a rank (e.g. cadets). */
 export const DEPARTMENT_ROLE_IDS = [
@@ -62,11 +64,18 @@ export const DEPARTMENT_ROLE_IDS = [
   "1558194099197059241", // Department Personnel
 ];
 
-/** Which rank a Discord role represents, by its name. */
+/** Which rank a Discord role represents, by its name — only exact "GSP | <rank>" roles count. */
 export function rankForRoleName(name: string): RankKey | null {
-  if (/office of the colonel/i.test(name)) return null;
-  for (const k of MATCH_ORDER) if (rankInfo(k).match.test(name)) return k;
-  return null;
+  const n = name.normalize("NFKC");
+  const prefix = RANK_ROLE_PREFIX.exec(n);
+  if (!prefix) return null;
+  const rest = n
+    .slice(prefix[0].length)
+    .toLowerCase()
+    .replace(/[^a-z ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return RANKS.find((r) => r.name === rest)?.key ?? null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -125,10 +134,13 @@ export type RosterEntry = {
   nickCallsign: number | null;
 };
 
+/** A callsign at the front of a nickname: "602 | Name", "602 I Name", "602 - Name", "602/Name"… */
+const CALLSIGN_PREFIX = /^\s*\d{2,4}\s*(?:[|│¦\-–—:/\\]|\s[Il](?=\s))\s*/;
+
 /** "602 | Ryan Callahan" → "Ryan Callahan" */
 export function baseName(m: GuildMember) {
   const raw = (m.nick || m.user.global_name || m.user.username).trim();
-  return raw.replace(/^\s*\d{2,4}\s*[|│\-–—:]\s*/, "").trim() || m.user.username;
+  return raw.replace(CALLSIGN_PREFIX, "").trim() || m.user.username;
 }
 
 export const nicknameFor = (callsign: number | null, name: string) =>
@@ -186,7 +198,7 @@ export async function buildRoster({ fresh = false } = {}) {
       nick: m.nick ?? null,
       rank,
       callsign: callsigns.get(m.user.id) ?? null,
-      nickCallsign: Number(/^\s*(\d{2,4})\s*[|│\-–—:]/.exec(m.nick ?? "")?.[1] ?? NaN) || null,
+      nickCallsign: CALLSIGN_PREFIX.test(m.nick ?? "") ? Number(/\d{2,4}/.exec(m.nick!)![0]) : null,
     });
   }
   entries.sort(
