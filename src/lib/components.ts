@@ -1,0 +1,54 @@
+import "server-only";
+
+/**
+ * Helpers for Discord Components V2 messages.
+ * Docs: https://discord.com/developers/docs/components/reference
+ *  - flag IS_COMPONENTS_V2 (1 << 15) is required, and `content`/`embeds` cannot be used
+ *  - all Text Display content together must stay under 4000 characters
+ */
+
+export const IS_COMPONENTS_V2 = 1 << 15;
+export const GOLD = 0xe8b130;
+export const RED = 0xc8372d;
+export const GREEN = 0x2e9d5b;
+
+export type Component = Record<string, unknown>;
+
+export const text = (content: string): Component => ({ type: 10, content });
+export const divider = (big = false): Component => ({ type: 14, divider: true, spacing: big ? 2 : 1 });
+export const section = (content: string, thumbUrl: string): Component => ({
+  type: 9,
+  components: [text(content)],
+  accessory: { type: 11, media: { url: thumbUrl } },
+});
+export const container = (accent: number, components: Component[]): Component => ({
+  type: 17,
+  accent_color: accent,
+  components,
+});
+export const buttonRow = (buttons: { id: string; label: string; style: 1 | 2 | 3 | 4; emoji?: string }[]): Component => ({
+  type: 1,
+  components: buttons.map((b) => ({
+    type: 2,
+    style: b.style,
+    label: b.label,
+    custom_id: b.id,
+    ...(b.emoji ? { emoji: { name: b.emoji } } : {}),
+  })),
+});
+
+/** Stops user input from pinging anyone or breaking formatting. */
+export function clean(s: string | null | undefined, max = 400) {
+  let v = (s ?? "").replace(/@(everyone|here)/gi, "@​$1").replace(/<@[&!]?\d+>/g, "[mention]").trim();
+  if (!v) return "_Not provided_";
+  if (v.length > max) v = v.slice(0, max - 1).trimEnd() + "…";
+  return v;
+}
+
+export const quote = (s: string | null | undefined, max = 400) =>
+  clean(s, max)
+    .split("\n")
+    .map((l) => `> ${l}`)
+    .join("\n");
+
+export const unix = (d: Date = new Date()) => Math.floor(d.getTime() / 1000);

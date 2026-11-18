@@ -86,25 +86,3 @@ export async function fetchMemberRoles(
   memberCache.set(userId, { at: Date.now(), roles });
   return roles;
 }
-
-/** Sends a DM from the bot. Fails quietly (returns false) if the user has DMs closed. */
-export async function sendDirectMessage(userId: string, content: string): Promise<boolean> {
-  if (!env.discord.botToken) return false;
-  try {
-    const ch = await fetch(`${API}/users/@me/channels`, {
-      method: "POST",
-      headers: { Authorization: `Bot ${env.discord.botToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ recipient_id: userId }),
-    });
-    if (!ch.ok) return false;
-    const { id } = (await ch.json()) as { id: string };
-    const msg = await fetch(`${API}/channels/${id}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bot ${env.discord.botToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
-    });
-    return msg.ok;
-  } catch {
-    return false;
-  }
-}

@@ -14,8 +14,13 @@ export const env = {
     clientId: process.env.DISCORD_CLIENT_ID || "",
     clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
     botToken: process.env.DISCORD_BOT_TOKEN || "",
+    /** Developer Portal → General Information → Public Key. Used to verify button clicks really come from Discord. */
+    publicKey: process.env.DISCORD_PUBLIC_KEY || "",
     guildId: process.env.DISCORD_GUILD_ID || "1558194098890874971", // South Fulton Roleplay
   },
+
+  /** Optional: normally read automatically from the applications webhook. */
+  applicationsChannelId: process.env.APPLICATIONS_CHANNEL_ID || "",
 
   webhooks: {
     applications: process.env.APPLICATIONS_WEBHOOK_URL || "",

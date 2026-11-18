@@ -20,6 +20,8 @@ export const SCHEMA_SQL = [
     reviewed_at TIMESTAMPTZ
   )`,
   `CREATE INDEX IF NOT EXISTS applications_discord_idx ON applications (discord_id)`,
+  `ALTER TABLE applications ADD COLUMN IF NOT EXISTS discord_channel_id TEXT`,
+  `ALTER TABLE applications ADD COLUMN IF NOT EXISTS discord_message_id TEXT`,
   `CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
     reporter_discord_id TEXT NOT NULL,

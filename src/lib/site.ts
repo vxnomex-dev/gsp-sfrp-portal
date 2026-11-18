@@ -33,6 +33,9 @@ export const site = {
 
   discordInvite: null as string | null, // e.g. "https://discord.gg/xxxx"
 
+  /** #cadet-dashboard — accepted applicants are told to read this channel. */
+  cadetDashboardChannelId: "1571798585769463860",
+
   cadetRequirements: [
     "You must be a member of the South Fulton Roleplay Discord.",
     "You must be at least 13 years of age.",

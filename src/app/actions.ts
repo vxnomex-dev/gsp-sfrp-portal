@@ -5,8 +5,9 @@ import { query, queryOne } from "@/lib/db";
 import { getViewer } from "@/lib/session";
 import { env } from "@/lib/env";
 import { site } from "@/lib/site";
-import { sendDirectMessage } from "@/lib/discord";
-import { sendApplicationWebhook, sendReportWebhook } from "@/lib/webhooks";
+import { sendReportWebhook } from "@/lib/webhooks";
+import { announceApplication, recordDecision } from "@/lib/applications-discord";
+import type { Application } from "@/lib/data";
 import {
   APPLICATION_STATUSES,
   CADET_QUESTIONS,
@@ -52,24 +53,15 @@ export async function submitApplication(_: FormState, fd: FormData): Promise<For
 
   const answers = CADET_QUESTIONS.map((q) => ({ key: q.key, question: q.label, answer: String(d[q.key] ?? "") }));
 
-  const row = await queryOne<{ id: number }>(
+  const row = await queryOne<Application>(
     `INSERT INTO applications (discord_id, discord_username, discord_avatar, roblox_username, age, timezone, availability, answers)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
     [viewer.uid, viewer.username, viewer.avatar, d.roblox_username, d.age, d.timezone, d.availability, JSON.stringify(answers)],
   );
   const id = Number(row!.id);
 
-  const ok = await sendApplicationWebhook({
-    id,
-    discordId: viewer.uid,
-    discordUsername: viewer.username,
-    discordAvatar: viewer.avatar,
-    robloxUsername: String(d.roblox_username),
-    age: Number(d.age),
-    timezone: String(d.timezone),
-    availability: String(d.availability),
-    answers: answers.filter((a) => a.answer),
-  });
+  // Posted by the bot so the Accept / Deny buttons work (falls back to the webhook if the bot can't post).
+  const ok = await announceApplication({ ...row!, answers });
   await query(`UPDATE applications SET webhook_ok = $1 WHERE id = $2`, [ok, id]);
 
   return { ok: true, ref: appRef(id) };
@@ -147,22 +139,27 @@ export async function decideApplication(_: FormState, fd: FormData): Promise<For
   const notify = fd.get("notify") === "on";
   if (!(status in APPLICATION_STATUSES)) return { message: "Invalid status." };
 
-  const app = await queryOne<{ discord_id: string }>(
-    `UPDATE applications SET status=$1, review_notes=$2, reviewer_id=$3, reviewer_name=$4, reviewed_at=now()
-     WHERE id=$5 RETURNING discord_id`,
-    [status, notes || null, viewer.uid, viewer.displayName, id],
-  );
-  if (!app) return { message: "Application not found." };
+  const before = await queryOne<{ status: string }>(`SELECT status FROM applications WHERE id=$1`, [id]);
+  if (!before) return { message: "Application not found." };
 
-  let dm = "";
-  if (notify && (status === "accepted" || status === "denied")) {
-    const msg =
-      status === "accepted"
-        ? `**Georgia State Patrol — ${appRef(id)}**\nCongratulations! Your cadet application has been **accepted**. A member of command staff will reach out with your next steps.${notes ? `\n\n> ${notes.replace(/\n/g, "\n> ")}` : ""}`
-        : `**Georgia State Patrol — ${appRef(id)}**\nThank you for applying. Unfortunately your cadet application has been **denied** at this time.${notes ? `\n\n**Feedback:**\n> ${notes.replace(/\n/g, "\n> ")}` : ""}`;
-    const sent = await sendDirectMessage(app.discord_id, msg);
-    dm = sent ? " Applicant notified by DM." : " Could not DM the applicant (their DMs may be closed).";
-  }
+  const result = await recordDecision({
+    id,
+    status: status as "pending" | "review" | "accepted" | "denied",
+    reviewerId: viewer.uid,
+    reviewerName: viewer.displayName,
+    notes,
+    onlyIfOpen: false,
+    // Only DM when the decision actually changes, so re-saving notes doesn't DM the applicant twice.
+    notify: notify && before.status !== status,
+  });
+  if (!result.ok) return { message: "Application not found." };
+
+  const dm =
+    result.dmSent === true
+      ? " Applicant notified by DM."
+      : result.dmSent === false
+        ? " Could not DM the applicant (their DMs may be closed)."
+        : "";
   refresh();
   return { ok: true, message: `Saved as ${APPLICATION_STATUSES[status as keyof typeof APPLICATION_STATUSES].label}.${dm}` };
 }

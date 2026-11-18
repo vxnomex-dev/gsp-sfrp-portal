@@ -38,6 +38,8 @@ export type Application = {
   reviewer_name: string | null;
   review_notes: string | null;
   webhook_ok: boolean | null;
+  discord_channel_id: string | null;
+  discord_message_id: string | null;
   created_at: string | Date;
   reviewed_at: string | Date | null;
 };

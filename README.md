@@ -74,6 +74,21 @@ page banners, the "On Patrol" strip) is set in `src/lib/site.ts`. To swap one, d
 Command staff photos can be set from the portal (**Portal → Website Content → Photo URL**), using either a
 `/images/...` path or an `https://` link.
 
+## Accept / Deny buttons in Discord
+
+New applications are posted **by the bot** (not the webhook) so the Accept / Deny buttons work. Setup:
+
+1. Vercel env var `DISCORD_PUBLIC_KEY` = Developer Portal → General Information → **Public Key**.
+2. Developer Portal → General Information → **Interactions Endpoint URL** =
+   `https://gspsfrp.xyz/api/discord/interactions` → Save (Discord tests it immediately).
+3. The bot needs **View Channel**, **Send Messages** and **Mention All Roles** in the applications channel
+   (or make the High Command role mentionable). If the bot can't post, the site falls back to the webhook
+   without buttons, and the portal still works.
+
+Accepting sends the applicant a DM with their next steps (#cadet-dashboard → wait for training → FTI issues a
+callsign); denying sends a short denial DM. Only Office of the Colonel, High Command and Command can click them.
+Decisions made in the portal update the Discord message too.
+
 ## Webhooks
 
 New applications and reports are posted to Discord as **Components V2** messages (container + sections, not
