@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
 import { guard } from "../guard";
-import { RANKS, buildRoster, getLastSync } from "@/lib/roster";
+import { RANKS, SLOT_RANKS, buildRoster, getAssignments, getLastSync, type RosterEntry } from "@/lib/roster";
 import { fmtDate } from "@/lib/format";
-import { SyncForms } from "./forms";
+import { AssignmentsForm, SyncForms } from "./forms";
 
 export const maxDuration = 300;
 
@@ -23,14 +23,16 @@ async function RosterSettings() {
   let error: string | null = null;
   let detected = new Map<string, string[]>();
   let counts = new Map<string, number>();
+  let entries: RosterEntry[] = [];
   try {
     const r = await buildRoster();
     detected = r.detected;
+    entries = r.entries;
     counts = new Map(RANKS.map((k) => [k.key, r.entries.filter((e) => e.rank === k.key).length]));
   } catch (e) {
     error = (e as Error).message;
   }
-  const last = await getLastSync();
+  const [last, assignments] = await Promise.all([getLastSync(), getAssignments()]);
 
   return (
     <div className="space-y-8">
@@ -84,6 +86,31 @@ async function RosterSettings() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="card card-gold space-y-4 p-6">
+        <div>
+          <h3 className="font-display text-xl uppercase text-navy-ink">Assignments</h3>
+          <p className="mt-1 text-muted-foreground">
+            Assignments belong to the <strong>position</strong>, not the person — if someone is promoted or leaves, the
+            assignment stays with the callsign for whoever fills it next. They show in the Assignment column of the{" "}
+            <Link className="text-navy underline" href="/roster">public roster</Link>. Leave a box empty for none.
+          </p>
+        </div>
+        <AssignmentsForm
+          slots={SLOT_RANKS.flatMap((r) =>
+            Array.from({ length: r.block[1] - r.block[0] + 1 }, (_, i) => {
+              const n = r.block[0] + i;
+              return { callsign: n, rank: r.label, holder: entries.find((e) => e.rank === r.key && e.callsign === n)?.name ?? null };
+            }),
+          )}
+          ranks={RANKS.filter((r) => !SLOT_RANKS.some((x) => x.key === r.key)).map((r) => ({
+            key: r.key,
+            label: r.label,
+            callsigns: `${r.block[0]}–${r.block[1]}`,
+          }))}
+          values={assignments as { slots: Record<string, string>; ranks: Record<string, string> }}
+        />
       </div>
 
       <div className="card space-y-4 p-6">

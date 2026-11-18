@@ -279,3 +279,24 @@ export async function rosterSync(_: FormState, fd: FormData): Promise<FormState>
     return { message: `Sync failed: ${(e as Error).message}` };
   }
 }
+
+export async function saveAssignments(_: FormState, fd: FormData): Promise<FormState> {
+  await requirePermission("content");
+  const { RANKS, SLOT_RANKS, saveAssignmentsData } = await import("@/lib/roster");
+  const clean = (k: string) => String(fd.get(k) ?? "").trim().slice(0, 80);
+  const slots: Record<string, string> = {};
+  for (const r of SLOT_RANKS)
+    for (let n = r.block[0]; n <= r.block[1]; n++) {
+      const v = clean(`s_${n}`);
+      if (v) slots[String(n)] = v;
+    }
+  const ranks: Record<string, string> = {};
+  for (const r of RANKS) {
+    if (SLOT_RANKS.some((x) => x.key === r.key)) continue;
+    const v = clean(`r_${r.key}`);
+    if (v) ranks[r.key] = v;
+  }
+  await saveAssignmentsData({ slots, ranks });
+  refresh();
+  return { ok: true, message: "Assignments saved — the roster is updated." };
+}

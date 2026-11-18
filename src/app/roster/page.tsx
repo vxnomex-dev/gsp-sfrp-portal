@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/SiteChrome";
 import { site } from "@/lib/site";
 import { avatarUrl } from "@/lib/discord";
-import { RANKS, TIERS, buildRoster, syncIfStale, type RosterEntry } from "@/lib/roster";
+import { RANKS, TIERS, buildRoster, assignmentFor, getAssignments, syncIfStale, type Assignments, type RosterEntry } from "@/lib/roster";
 
 export const metadata: Metadata = { title: "Roster" };
 export const maxDuration = 300;
@@ -26,11 +26,12 @@ export default function RosterPage() {
   );
 }
 
-type Row = { key: string; callsign: number | null; rank: string; entry: RosterEntry | null };
+type Row = { key: string; callsign: number | null; rank: string; assignment?: string; entry: RosterEntry | null };
 
 async function Roster() {
   await connection();
   let entries: RosterEntry[];
+  const assignments: Assignments = await getAssignments().catch(() => ({ slots: {}, ranks: {} }));
   try {
     entries = (await buildRoster()).entries;
   } catch (e) {
@@ -53,11 +54,11 @@ async function Roster() {
         // Every callsign in the block, filled or Vacant
         for (let n = r.block[0]; n <= r.block[1]; n++) {
           const e = members.find((m) => m.callsign === n) ?? null;
-          rows.push({ key: `${r.key}-${n}`, callsign: n, rank: r.label, entry: e });
+          rows.push({ key: `${r.key}-${n}`, callsign: n, rank: r.label, assignment: assignmentFor(assignments, r.key, n), entry: e });
         }
-        for (const e of members.filter((m) => m.callsign === null)) rows.push({ key: e.userId, callsign: null, rank: r.label, entry: e });
+        for (const e of members.filter((m) => m.callsign === null)) rows.push({ key: e.userId, callsign: null, rank: r.label, assignment: assignmentFor(assignments, r.key, null), entry: e });
       } else {
-        for (const e of members) rows.push({ key: e.userId, callsign: e.callsign, rank: r.label, entry: e });
+        for (const e of members) rows.push({ key: e.userId, callsign: e.callsign, rank: r.label, assignment: assignmentFor(assignments, r.key, e.callsign), entry: e });
       }
     }
     return { key: tier.key, label: tier.label, rows, filled: rows.filter((x) => x.entry).length };
@@ -87,12 +88,13 @@ async function Roster() {
           <div key={g.key}>
             <h2 className="mb-3 border-b-[3px] border-gold pb-2 text-2xl font-semibold uppercase text-navy-ink">{g.label}</h2>
             <div className="card overflow-x-auto">
-              <table className="w-full table-fixed text-left text-[0.97rem]">
+              <table className="w-full min-w-[44rem] table-fixed text-left text-[0.97rem]">
                 <thead className="border-b border-border bg-panel font-display text-xs uppercase tracking-wider text-navy">
                   <tr>
                     <th className="w-28 px-4 py-3">Callsign</th>
-                    <th className="w-1/2 px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Rank</th>
+                    <th className="w-[38%] px-4 py-3">Name</th>
+                    <th className="w-[22%] px-4 py-3">Rank</th>
+                    <th className="px-4 py-3">Assignment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -119,6 +121,13 @@ async function Roster() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{row.rank}</td>
+                      <td className="px-4 py-3">
+                        {row.assignment ? (
+                          <span className="font-medium text-navy-ink">{row.assignment}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

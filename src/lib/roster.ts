@@ -93,6 +93,31 @@ async function setMeta(key: string, value: unknown) {
   ]);
 }
 
+/**
+ * Assignments shown on the roster. They belong to the POSITION, not the person:
+ *  - slots: per callsign (Office of the Colonel + Command), e.g. 610 → "Overseer of NH, HR"
+ *  - ranks: per rank (Supervisors + Patrol), e.g. Corporal → "Field Training Officer"
+ * Edited in the portal (Roster & Callsigns).
+ */
+export type Assignments = { slots: Record<string, string>; ranks: Partial<Record<RankKey, string>> };
+const DEFAULT_ASSIGNMENTS: Assignments = {
+  slots: { "600": "Commanding Officer", "601": "Deputy Commander", "602": "Deputy Commander" },
+  ranks: {},
+};
+
+export async function getAssignments(): Promise<Assignments> {
+  const a = await getMeta<Partial<Assignments>>("roster_assignments");
+  return a ? { slots: a.slots ?? {}, ranks: a.ranks ?? {} } : DEFAULT_ASSIGNMENTS;
+}
+export async function saveAssignmentsData(a: Assignments) {
+  await setMeta("roster_assignments", a);
+}
+export function assignmentFor(a: Assignments, rank: RankKey | null, callsign: number | null) {
+  return (callsign !== null ? a.slots[String(callsign)] : undefined) ?? (rank ? a.ranks[rank] : undefined);
+}
+/** Ranks whose assignments are set per callsign slot. */
+export const SLOT_RANKS = RANKS.filter((r) => TIERS.find((t) => t.key === r.tier)!.showVacancies);
+
 export type SyncReport = {
   at: string;
   reissued: boolean;
