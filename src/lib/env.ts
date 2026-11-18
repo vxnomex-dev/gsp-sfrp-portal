@@ -32,6 +32,8 @@ export const env = {
     employee: list(
       process.env.ROLE_EMPLOYEE_IDS || "1558194099268358282,1558194099268358274,1558194099197059241",
     ),
+    /** Office of the Colonel — full access to everything, including Human Resources reports. */
+    ootc: list(process.env.ROLE_OOTC_IDS || "1558194099327074422"),
     /** Office of the Colonel + High Command — review applications AND edit site content. */
     commandStaff: list(process.env.ROLE_COMMAND_STAFF_IDS || "1558194099327074422,1558194099327074418"),
     /** Command — can review applications (no content editing). */

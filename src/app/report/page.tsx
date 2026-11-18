@@ -22,7 +22,7 @@ export default function ReportPage() {
             <Lock className="mt-0.5 shrink-0 text-navy" size={20} />
             <div className="text-[0.97rem] text-muted-foreground">
               <div className="font-display text-sm uppercase tracking-[0.12em] text-navy-ink">Confidential</div>
-              Reports are visible <strong>only</strong> to members of Human Resources. Your identity is
+              Reports are visible <strong>only</strong> to Human Resources and the Office of the Colonel. Your identity is
               never shared with the trooper you report. Clips or screenshots make it much easier for HR to act — upload
               them to YouTube, Medal, Imgur or Discord and paste the links below. False reports may result in
               disciplinary action.

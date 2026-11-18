@@ -32,7 +32,12 @@ export function resolveAccess(roleIds: string[]): Access {
     perms.add("content");
     labels.push("High Command");
   }
-  // Reports are deliberately tied to the PSB role ONLY — command staff do not get this automatically.
+  // Office of the Colonel: everything.
+  if (has(env.roles.ootc)) {
+    for (const p of ["portal", "applications", "content", "reports"] as const) perms.add(p);
+    labels.unshift("Office of the Colonel");
+  }
+  // Otherwise reports are tied to Human Resources only — High Command / Command do not get them automatically.
   if (has(env.roles.psb)) {
     perms.add("portal");
     perms.add("reports");
