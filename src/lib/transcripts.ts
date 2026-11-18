@@ -131,7 +131,7 @@ export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[]
 <style>
   *{box-sizing:border-box}body{margin:0;background:#313338;color:#dbdee1;font:15px/1.4 "gg sans","Segoe UI",Helvetica,Arial,sans-serif}
   .wrap{max-width:1000px;margin:0 auto;padding:24px 16px 60px}
-  .banner{width:100%;border-radius:8px;display:block}
+  .banner{width:100%;border-radius:8px;display:block}.banner.footer{margin-top:40px;border-radius:6px}
   h1{font-size:22px;color:#fff;margin:18px 0 4px}.lead{color:#949ba4;margin:0 0 16px}
   .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;background:#2b2d31;border-radius:8px;padding:14px 16px;margin-bottom:12px}
   .info div span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#949ba4;font-weight:700}
@@ -150,7 +150,7 @@ export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[]
   pre{background:#1e1f22;border:1px solid #1a1b1e;border-radius:4px;padding:8px;white-space:pre-wrap;font-size:13px;margin:4px 0}
   a{color:#00a8fc;text-decoration:none}a:hover{text-decoration:underline}
   .att{max-width:400px;max-height:300px;border-radius:6px;margin-top:4px;display:block}.file{display:inline-block;margin-top:4px}
-  .muted{color:#949ba4;font-style:italic}.foot{color:#949ba4;font-size:12px;text-align:center;margin-top:40px}
+  .muted{color:#949ba4;font-style:italic}.foot{color:#949ba4;font-size:12px;text-align:center;margin-top:12px}
 </style></head><body><div class="wrap">
 <img class="banner" src="${esc(env.baseUrl)}/images/gsp-banner.jpg" alt="Georgia State Patrol">
 <h1>${esc(meta.kindLabel)} — Ticket #${meta.ticketId}</h1>
@@ -158,6 +158,7 @@ export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[]
 <div class="info">${info.map(([k, v]) => `<div><span>${k}</span>${esc(v)}</div>`).join("")}</div>
 <div class="inq"><b>What's up?</b>${esc(meta.inquiry)}</div>
 ${rows || '<p class="muted">No messages.</p>'}
+<img class="banner footer" src="${esc(env.baseUrl)}/images/gsp-footer.jpg" alt="Georgia State Patrol">
 <div class="foot">Generated ${esc(fmtTime(meta.closedAt))} • Georgia State Patrol</div>
 </div></body></html>`;
 }

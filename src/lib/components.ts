@@ -25,12 +25,20 @@ export const banner = (): Component => ({
   items: [{ media: { url: `${env.baseUrl}/images/gsp-banner.jpg` }, description: "Georgia State Patrol" }],
 });
 
+/** The "Wisdom, Justice and Moderation" strip (public/images/gsp-footer.jpg), shown at the bottom of main messages. */
+export const footerBanner = (): Component => ({
+  type: 12,
+  items: [{ media: { url: `${env.baseUrl}/images/gsp-footer.jpg` }, description: "Georgia State Patrol" }],
+});
+
 /**
- * A Components V2 container (no side colour). Gets the GSP banner at the top unless `withBanner` is false.
+ * A Components V2 container (no side colour).
+ * Main messages get the GSP banner on top and the footer strip at the bottom; pass `withBanner = false`
+ * for small notices (claim, rename, close, close request…) to keep them as plain messages.
  */
 export const container = (components: Component[], withBanner = true): Component => ({
   type: 17,
-  components: withBanner ? [banner(), ...components] : components,
+  components: withBanner ? [banner(), ...components, footerBanner()] : components,
 });
 /** A file attached to the same message (Components V2 File component). */
 export const fileComponent = (name: string): Component => ({ type: 13, file: { url: `attachment://${name}` } });

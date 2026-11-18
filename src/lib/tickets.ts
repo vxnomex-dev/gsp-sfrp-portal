@@ -478,7 +478,13 @@ export async function finishClose(t: Ticket, member: Member, reason: string) {
       `> **Reason:** ${clean(reason, 300)}\n` +
       `> **Opened:** <t:${unix(new Date(t.created_at))}:f> • **Closed:** <t:${unix()}:f>\n` +
       `> **Messages:** ${messageCount}`;
-    const log = [container([text(`### 📁 Ticket Closed — ${cfg.label} #${t.id}`), text(details), ...(transcript ? [fileComponent(transcript.name)] : [text("-# Transcript unavailable.")])], false)];
+    const log = [
+      container([
+        text(`### 📁 Ticket Closed — ${cfg.label} #${t.id}`),
+        text(details),
+        ...(transcript ? [fileComponent(transcript.name)] : [text("-# Transcript unavailable.")]),
+      ]),
+    ];
     if (transcript) await postChannelMessageWithFile(TRANSCRIPT_CHANNEL_ID, { components: log }, transcript);
     else await postChannelMessage(TRANSCRIPT_CHANNEL_ID, { components: log });
   } catch (e) {
