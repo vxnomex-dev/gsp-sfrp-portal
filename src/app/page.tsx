@@ -36,7 +36,32 @@ export default function HomePage() {
     <>
       {/* HERO */}
       <section className="relative overflow-hidden text-white">
-        {site.images.hero ? (
+        {site.images.heroVideo ? (
+          <>
+            {/* Looping background video. Muted + playsInline lets it autoplay on phones too. */}
+            <video
+              className="absolute inset-0 h-full w-full object-cover brightness-[1.3] motion-reduce:hidden"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster={site.images.heroVideo.poster}
+              aria-hidden="true"
+            >
+              <source src={site.images.heroVideo.webm} type="video/webm" />
+              <source src={site.images.heroVideo.mp4} type="video/mp4" />
+            </video>
+            {/* People who turn off animations in their device settings get a still frame instead. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={site.images.heroVideo.poster}
+              alt=""
+              className="absolute inset-0 hidden h-full w-full object-cover brightness-[1.3] motion-reduce:block"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-navy-deep/95 via-navy-deep/55 to-transparent" />
+          </>
+        ) : site.images.hero ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={site.images.hero} alt="" className="absolute inset-0 h-full w-full object-cover object-[70%_center] brightness-[1.35]" />

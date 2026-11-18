@@ -14,6 +14,12 @@ export const site = {
   images: {
     logo: "/images/gsp-seal.png" as string | null,
     hero: "/images/post-charger.jpg" as string | null,
+    // Looping background video on the home page (plays muted, on repeat). Set to null to use the hero photo instead.
+    heroVideo: {
+      webm: "/images/hero.webm",
+      mp4: "/images/hero.mp4",
+      poster: "/images/hero-poster.jpg",
+    } as { webm: string; mp4: string; poster: string } | null,
     mission: "/images/traffic-stop.jpg" as string | null,
     // Background photos behind each page's title banner (set to null for plain navy)
     headers: {
