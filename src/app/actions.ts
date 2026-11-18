@@ -252,3 +252,38 @@ export async function registerDiscordCommands(): Promise<FormState> {
     return { message: `Discord rejected the request: ${(e as Error).message}` };
   }
 }
+
+export async function rosterSync(_: FormState, fd: FormData): Promise<FormState> {
+  await requirePermission("content");
+  const { syncRoster } = await import("@/lib/roster");
+  const reissue = fd.get("mode") === "reissue";
+  if (reissue && fd.get("confirm") !== "REISSUE") {
+    return { message: 'Type REISSUE in the box to confirm re-numbering everyone.' };
+  }
+  try {
+    const r = await syncRoster({ reissue });
+    refresh();
+    return {
+      ok: true,
+      message:
+        `${reissue ? "Callsigns re-issued" : "Roster synced"}: ${r.members} members, ${r.newCallsigns} new callsigns, ` +
+        `${r.nicknamesUpdated} nicknames updated` +
+        (r.failures.length ? `, ${r.failures.length} couldn't be renamed (see below).` : ".") +
+        (r.outOfCallsigns ? ` ${r.outOfCallsigns} members didn't get a callsign — the 600s and 700s are full.` : ""),
+    };
+  } catch (e) {
+    return { message: `Sync failed: ${(e as Error).message}` };
+  }
+}
+
+export async function saveRankRoles(_: FormState, fd: FormData): Promise<FormState> {
+  await requirePermission("content");
+  const { setRankRoleSetting } = await import("@/lib/roster");
+  if (fd.get("mode") === "auto") {
+    await setRankRoleSetting(null);
+  } else {
+    await setRankRoleSetting(fd.getAll("rank").map(String));
+  }
+  refresh();
+  return { ok: true, message: "Rank roles saved." };
+}

@@ -179,6 +179,50 @@ export async function editInteractionResponse(interactionToken: string, body: Re
   if (!res.ok) throw new DiscordError(res.status, await res.text());
 }
 
+/* ---------------- Members & roles (roster) ---------------- */
+
+export type GuildRole = { id: string; name: string; position: number; color: number };
+export type GuildMember = {
+  user: { id: string; username: string; global_name?: string | null; avatar?: string | null; bot?: boolean };
+  nick?: string | null;
+  roles: string[];
+};
+
+export function fetchGuildRoles() {
+  return bot<GuildRole[]>(`/guilds/${env.discord.guildId}/roles`);
+}
+
+/** Every member of the server. Needs the Server Members intent (Developer Portal → Bot). */
+export async function fetchGuildMembers(): Promise<GuildMember[]> {
+  const all: GuildMember[] = [];
+  let after = "0";
+  for (let i = 0; i < 20; i++) {
+    const page = await bot<GuildMember[]>(`/guilds/${env.discord.guildId}/members?limit=1000&after=${after}`);
+    all.push(...page);
+    if (page.length < 1000) break;
+    after = page[page.length - 1].user.id;
+  }
+  return all;
+}
+
+/** Sets a member's server nickname. Retries once if Discord rate-limits us. */
+export async function setNickname(userId: string, nick: string): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await bot(`/guilds/${env.discord.guildId}/members/${userId}`, { method: "PATCH", body: { nick } });
+      return;
+    } catch (e) {
+      if (e instanceof DiscordError && e.status === 429) {
+        const wait = Number(JSON.parse(e.body || "{}").retry_after ?? 1);
+        await new Promise((r) => setTimeout(r, Math.ceil(wait * 1000) + 100));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new DiscordError(429, "rate limited");
+}
+
 /* ---------------- Interactions (button clicks) ---------------- */
 
 /** Verifies that a request really came from Discord (Ed25519 signature). */

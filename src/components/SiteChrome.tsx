@@ -77,6 +77,7 @@ export function Footer() {
           <ul className="space-y-2 text-sm">
             <li><Link className="hover:text-gold" href="/command-staff">Command Staff</Link></li>
             <li><Link className="hover:text-gold" href="/divisions">Divisions</Link></li>
+            <li><Link className="hover:text-gold" href="/roster">Roster</Link></li>
             <li><Link className="hover:text-gold" href="/apply">Cadet Application</Link></li>
             <li><Link className="hover:text-gold" href="/report">Report a Trooper</Link></li>
             <li><Link className="hover:text-gold" href="/portal">Employee Portal</Link></li>

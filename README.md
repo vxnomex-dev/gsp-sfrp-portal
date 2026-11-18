@@ -105,6 +105,17 @@ Decisions made in the portal update the Discord message too.
 - Bot permissions needed: Manage Channels, Manage Roles, View Channels, Send Messages, Embed Links, Attach Files,
   Read Message History, Mention All Roles.
 
+## Roster & callsigns
+
+- Public page `/roster`: everyone with a GSP role, grouped Office of the Colonel → High Command → Command →
+  Supervisors → Patrol → Department Personnel, then by rank (role order in Discord), then name. Synced live.
+- Callsigns: 600–699, then 700–799. People keep their callsign; newcomers get the lowest free number; people who
+  leave free theirs up. **Portal → Roster & Callsigns → Re-issue** renumbers everyone in chain-of-command order.
+- The bot sets nicknames to `600 | Name` (needs **Manage Nicknames**, and its role must be above everyone it renames;
+  the server owner can never be renamed by a bot). Auto-sync runs at most every 10 minutes when the roster is viewed.
+- Ranks are detected from role names, or pick them in the portal. Sections/ranges live in `src/lib/roster.ts`.
+- Needs **Server Members Intent** (Developer Portal → Bot).
+
 ## Webhooks
 
 New applications and reports are posted to Discord as **Components V2** messages (container + sections, not

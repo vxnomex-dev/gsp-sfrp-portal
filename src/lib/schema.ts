@@ -81,6 +81,11 @@ export const SCHEMA_SQL = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     closed_at TIMESTAMPTZ
   )`,
+  `CREATE TABLE IF NOT EXISTS roster_callsigns (
+    user_id TEXT PRIMARY KEY,
+    callsign INTEGER NOT NULL UNIQUE,
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
   `CREATE INDEX IF NOT EXISTS tickets_open_idx ON tickets (opener_id, kind, status)`,
 ];
 

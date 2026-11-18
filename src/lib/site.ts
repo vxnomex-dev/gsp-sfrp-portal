@@ -27,6 +27,7 @@ export const site = {
       divisions: "/images/charger-profile.jpg",
       apply: "/images/moonlight-charger.jpg",
       report: "/images/explorer-rear.jpg",
+      roster: "/images/post-charger.jpg",
     } as Record<string, string | null>,
     // "On Patrol" photo strip on the home page
     gallery: [
@@ -55,6 +56,7 @@ export const navLinks = [
   { href: "/", label: "Home" },
   { href: "/command-staff", label: "Command Staff" },
   { href: "/divisions", label: "Divisions" },
+  { href: "/roster", label: "Roster" },
   { href: "/apply", label: "Cadet Application" },
   { href: "/report", label: "Report a Trooper" },
 ];
