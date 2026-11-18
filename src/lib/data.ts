@@ -40,6 +40,7 @@ export type Application = {
   webhook_ok: boolean | null;
   discord_channel_id: string | null;
   discord_message_id: string | null;
+  denial_reason: string | null;
   created_at: string | Date;
   reviewed_at: string | Date | null;
 };

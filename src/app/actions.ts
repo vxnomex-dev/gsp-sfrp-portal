@@ -137,7 +137,11 @@ export async function decideApplication(_: FormState, fd: FormData): Promise<For
   const status = String(fd.get("status"));
   const notes = String(fd.get("notes") ?? "").trim().slice(0, 2000);
   const notify = fd.get("notify") === "on";
+  const reason = String(fd.get("reason") ?? "").trim().slice(0, 500);
   if (!(status in APPLICATION_STATUSES)) return { message: "Invalid status." };
+  if (status === "denied" && reason.length < 5) {
+    return { message: "A reason is required to deny an application.", errors: { reason: "Please give a reason for the denial (at least 5 characters)." } };
+  }
 
   const before = await queryOne<{ status: string }>(`SELECT status FROM applications WHERE id=$1`, [id]);
   if (!before) return { message: "Application not found." };
@@ -148,6 +152,7 @@ export async function decideApplication(_: FormState, fd: FormData): Promise<For
     reviewerId: viewer.uid,
     reviewerName: viewer.displayName,
     notes,
+    reason: status === "denied" ? reason : null,
     onlyIfOpen: false,
     // Only DM when the decision actually changes, so re-saving notes doesn't DM the applicant twice.
     notify: notify && before.status !== status,

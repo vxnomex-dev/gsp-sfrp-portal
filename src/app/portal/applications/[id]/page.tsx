@@ -71,7 +71,13 @@ async function ApplicationDetail({ params }: { params: PageProps<"/portal/applic
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-48 lg:self-start">
-          <DecisionForm id={app.id} status={app.status} notes={app.review_notes ?? ""} />
+          <DecisionForm id={app.id} status={app.status} notes={app.review_notes ?? ""} denialReason={app.denial_reason ?? ""} />
+          {app.status === "denied" && app.denial_reason && (
+            <div className="border-l-4 border-destructive bg-card px-4 py-3 text-sm">
+              <div className="field-label !mb-1">Reason given to applicant</div>
+              <p className="whitespace-pre-wrap">{app.denial_reason}</p>
+            </div>
+          )}
           {app.reviewer_name && (
             <p className="text-sm text-muted-foreground">
               Last updated by <strong>{app.reviewer_name}</strong> on {fmtDate(app.reviewed_at)}

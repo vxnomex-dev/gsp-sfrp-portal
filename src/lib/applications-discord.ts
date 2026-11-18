@@ -34,6 +34,36 @@ import type { Application } from "./data";
 
 export const ACCEPT_PREFIX = "gsp_app_accept:";
 export const DENY_PREFIX = "gsp_app_deny:";
+/** The "reason for denial" pop-up that opens when Deny is clicked. */
+export const DENY_MODAL_PREFIX = "gsp_app_denymodal:";
+export const DENY_REASON_INPUT = "reason";
+
+export function denyReasonModal(id: number) {
+  return {
+    type: 9, // MODAL
+    data: {
+      custom_id: `${DENY_MODAL_PREFIX}${id}`,
+      title: `Deny ${appRef(id)}`,
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 4, // text input
+              custom_id: DENY_REASON_INPUT,
+              label: "Reason for denial (sent to the applicant)",
+              style: 2, // paragraph
+              required: true,
+              min_length: 5,
+              max_length: 500,
+              placeholder: "e.g. Answers were too short and didn't show an understanding of the role.",
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
 
 type AppForMessage = Pick<
   Application,
@@ -51,6 +81,7 @@ type AppForMessage = Pick<
   | "reviewer_name"
   | "reviewed_at"
   | "created_at"
+  | "denial_reason"
 >;
 
 export function buildApplicationMessage(a: AppForMessage, { withButtons }: { withButtons: boolean }): V2Message {
@@ -67,7 +98,7 @@ export function buildApplicationMessage(a: AppForMessage, { withButtons }: { wit
       text(
         a.status === "accepted"
           ? `### ✅ Accepted by ${by}${when}\n-# The applicant has been sent their next steps by DM.`
-          : `### ❌ Denied by ${by}${when}\n-# The applicant has been notified by DM.`,
+          : `### ❌ Denied by ${by}${when}\n**Reason:**\n${quote(a.denial_reason, 500)}\n-# The applicant has been notified by DM.`,
       ),
     ];
   } else if (withButtons) {
@@ -156,7 +187,7 @@ export function acceptedDM(a: { id: number; discord_id: string }): Component[] {
   ];
 }
 
-export function deniedDM(a: { id: number; discord_id: string }): Component[] {
+export function deniedDM(a: { id: number; discord_id: string; denial_reason: string | null }): Component[] {
   return [
     container(RED, [
       text(
@@ -164,6 +195,7 @@ export function deniedDM(a: { id: number; discord_id: string }): Component[] {
           `Thank you for your interest in the **Georgia State Patrol**. Unfortunately, your application did not pass this time.`,
       ),
       divider(),
+      ...(a.denial_reason ? [text(`**Reason:**\n${quote(a.denial_reason, 500)}`)] : []),
       text(`You're welcome to apply again in the future.`),
       divider(true),
       text(`-# ${appRef(a.id)} • Georgia State Patrol — ${site.community}`),
@@ -185,6 +217,8 @@ export async function recordDecision(opts: {
   reviewerId: string;
   reviewerName: string;
   notes?: string | null;
+  /** Required when denying — stored and sent to the applicant. */
+  reason?: string | null;
   /** Buttons can only decide applications that are still open; the portal may change a decision. */
   onlyIfOpen: boolean;
   notify: boolean;
@@ -195,10 +229,11 @@ export async function recordDecision(opts: {
     `UPDATE applications
        SET status=$1, reviewer_id=$2, reviewer_name=$3,
            review_notes = CASE WHEN $4::text IS NULL THEN review_notes ELSE $4::text END,
+           denial_reason = CASE WHEN $1 = 'denied' THEN $7::text ELSE NULL END,
            reviewed_at=now()
      WHERE id=$5 AND (NOT $6 OR status IN ('pending','review'))
      RETURNING *`,
-    [opts.status, opts.reviewerId, opts.reviewerName, opts.notes ?? null, opts.id, opts.onlyIfOpen],
+    [opts.status, opts.reviewerId, opts.reviewerName, opts.notes ?? null, opts.id, opts.onlyIfOpen, opts.reason?.trim() || null],
   );
   if (!row) {
     const existing = await queryOne<Application>(`SELECT * FROM applications WHERE id=$1`, [opts.id]);
