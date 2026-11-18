@@ -94,7 +94,20 @@ export type SyncReport = {
   /** e.g. "Major (all 3 spots taken): Sam Price" */
   noSpot: string[];
 };
-export const getLastSync = () => getMeta<SyncReport>("roster_last_sync");
+/** The last sync report. Older reports (saved before rank-based callsigns) are filled in so pages don't break. */
+export async function getLastSync(): Promise<SyncReport | null> {
+  const r = await getMeta<Partial<SyncReport>>("roster_last_sync");
+  if (!r || !r.at) return null;
+  return {
+    at: r.at,
+    reissued: !!r.reissued,
+    members: r.members ?? 0,
+    newCallsigns: r.newCallsigns ?? 0,
+    nicknamesUpdated: r.nicknamesUpdated ?? 0,
+    failures: Array.isArray(r.failures) ? r.failures : [],
+    noSpot: Array.isArray(r.noSpot) ? r.noSpot : [],
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /* Building the roster                                                 */
