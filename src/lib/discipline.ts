@@ -24,9 +24,9 @@ import type { Member } from "./tickets";
 
 export const DISCIPLINE = {
   /** Channel for promotion announcements. Empty = the channel the command was used in. */
-  promotionsChannelId: "",
+  promotionsChannelId: "1558194101831209031",
   /** Channel for infraction notices. Empty = the channel the command was used in. */
-  infractionsChannelId: "",
+  infractionsChannelId: "1558194101831209032",
   /** Roles that may use /promote. */
   promoteRoles: [
     "1558194099327074422", // Office of the Colonel
@@ -39,7 +39,7 @@ export const DISCIPLINE = {
     "1558194099327074422", // Office of the Colonel
   ],
   /** Kept on termination (matched by ID, or by a role named "Community Member" if this is empty). */
-  communityMemberRoleIds: [] as string[],
+  communityMemberRoleIds: ["1558194098890874976"] as string[],
 };
 
 export const INFRACTION_TYPES = {
