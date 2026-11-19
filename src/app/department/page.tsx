@@ -1,16 +1,25 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Car, Check, Lock, Minus, ShieldCheck, Lightbulb, Info } from "lucide-react";
+import { Car, Check, Lock, Minus, ShieldCheck, Lightbulb, Info, BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/SiteChrome";
 import { site } from "@/lib/site";
 import { guard } from "@/app/portal/guard";
 import { env } from "@/lib/env";
 import { RANKS, TIERS, rankForRoles, type RankKey } from "@/lib/roster";
 import { FLEET, PACKAGES, authorized, minRankText, rankLabel } from "@/lib/vehicles";
+import { SOP, SOP_META, type SopSubsection } from "@/lib/sop";
 
 export const metadata: Metadata = { title: "Department Information", robots: { index: false, follow: false } };
 
-const SECTIONS = [{ id: "vehicles", label: "Vehicle Regulations", icon: Car }];
+const SECTIONS = [
+  { id: "vehicles", label: "Vehicle Regulations", icon: Car, children: [] as { id: string; label: string }[] },
+  {
+    id: "sop",
+    label: "Standard Operating Procedure",
+    icon: BookOpen,
+    children: SOP.map((s) => ({ id: s.id, label: `${s.numeral}. ${s.title}` })),
+  },
+];
 
 export default function DepartmentPage() {
   return (
@@ -38,7 +47,7 @@ async function Content() {
 
   return (
     <div className="grid gap-10 lg:grid-cols-[14rem_1fr]">
-      <aside className="lg:sticky lg:top-40 lg:self-start">
+      <aside className="lg:sticky lg:top-48 lg:self-start">
         <div className="eyebrow !text-muted-foreground mb-3">Sections</div>
         <ul className="space-y-1">
           {SECTIONS.map((s) => (
@@ -47,8 +56,19 @@ async function Content() {
                 href={`#${s.id}`}
                 className="flex items-center gap-2 border-l-[3px] border-gold bg-panel px-3 py-2.5 font-display text-sm uppercase tracking-wide text-navy-ink"
               >
-                <s.icon size={16} className="text-navy" /> {s.label}
+                <s.icon size={16} className="shrink-0 text-navy" /> {s.label}
               </a>
+              {s.children.length > 0 && (
+                <ul className="mb-1 ml-[3px] border-l border-border py-1">
+                  {s.children.map((c) => (
+                    <li key={c.id}>
+                      <a href={`#${c.id}`} className="block px-4 py-1.5 text-sm text-muted-foreground hover:text-navy-ink">
+                        {c.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>
@@ -60,6 +80,7 @@ async function Content() {
 
       <div className="min-w-0 space-y-12">
         <VehicleRegulations rank={rank} name={viewer.displayName} />
+        <StandardOperatingProcedure />
       </div>
     </div>
   );
@@ -84,7 +105,7 @@ function VehicleRegulations({ rank, name }: { rank: RankKey | null; name: string
   ];
 
   return (
-    <section id="vehicles" className="scroll-mt-40 space-y-10">
+    <section id="vehicles" className="scroll-mt-48 space-y-10">
       <header>
         <div className="eyebrow mb-1">Section 1</div>
         <h2 className="text-4xl font-semibold uppercase text-navy-ink">Vehicle Regulations</h2>
@@ -174,7 +195,8 @@ function VehicleRegulations({ rank, name }: { rank: RankKey | null; name: string
       <div>
         <h3 className="mb-1 text-2xl font-semibold uppercase text-navy-ink">Lighting &amp; Livery Set-ups</h3>
         <p className="mb-4 text-muted-foreground">
-          Applies to every vehicle above. Slick tops and ghosted set-ups are for supervisors and above.
+          Applies to every vehicle above. Slick tops are for supervisors and above; ghosted set-ups are for Lieutenants
+          and above.
         </p>
         <div className="grid gap-4 md:grid-cols-3">
           {PACKAGES.map((p) => (
@@ -268,5 +290,99 @@ function TierRows({
         );
       })}
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Section 2 — Standard Operating Procedure                            */
+/* ------------------------------------------------------------------ */
+
+function Subsection({ s }: { s: SopSubsection }) {
+  return (
+    <div className="grid gap-x-5 gap-y-2 px-6 py-5 sm:grid-cols-[4.5rem_1fr]">
+      <div>
+        <span className="inline-block min-w-14 rounded-sm bg-navy px-2 py-0.5 text-center font-display tracking-wider text-gold">
+          {s.num}
+        </span>
+      </div>
+      <div className="min-w-0">
+        <h5 className="font-display text-lg uppercase leading-snug text-navy-ink">{s.title}</h5>
+        {s.body.map((p, i) =>
+          typeof p === "string" ? (
+            <p key={i} className="mt-2 leading-relaxed text-foreground/90">
+              {p}
+            </p>
+          ) : (
+            <p key={i} className="mt-3 border-l-[3px] border-gold bg-panel px-4 py-3 leading-relaxed text-foreground/90">
+              <strong className="text-navy-ink">{p.lead}</strong> {p.text}
+            </p>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StandardOperatingProcedure() {
+  const count = (id: string) => SOP.find((x) => x.id === id)!.groups.reduce((n, g) => n + g.items.length, 0);
+  return (
+    <section id="sop" className="scroll-mt-48 space-y-10 border-t border-border pt-12">
+      <header>
+        <div className="eyebrow mb-1">Section 2</div>
+        <h2 className="text-4xl font-semibold uppercase text-navy-ink">{SOP_META.title}</h2>
+        <p className="mt-3 max-w-3xl text-lg text-muted-foreground">
+          The {SOP_META.subtitle}. Every trooper is expected to know and follow these procedures on and off patrol.
+        </p>
+        <p className="mt-2 font-display text-sm uppercase tracking-[0.16em] text-muted-foreground">
+          Author: <span className="text-navy-ink">{SOP_META.author}</span>
+        </p>
+      </header>
+
+      {/* Contents */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {SOP.map((s) => (
+          <a key={s.id} href={`#${s.id}`} className="card group overflow-hidden transition-shadow hover:shadow-md">
+            <div className="flex items-center justify-between gap-3 bg-navy px-5 py-2.5 text-white">
+              <span className="font-display text-xs uppercase tracking-[0.16em] text-white/80">Section {s.numeral}</span>
+              <span className="rounded-sm bg-gold px-2 py-0.5 font-display text-xs uppercase tracking-wider text-gold-foreground">
+                {count(s.id)} subsections
+              </span>
+            </div>
+            <div className="px-5 py-4">
+              <h4 className="text-xl font-semibold uppercase leading-tight text-navy-ink group-hover:text-navy">{s.title}</h4>
+              {s.groups.some((g) => g.title) && (
+                <p className="mt-1 text-sm text-muted-foreground">{s.groups.map((g) => g.title).filter(Boolean).join(" · ")}</p>
+              )}
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {SOP.map((s) => (
+        <article key={s.id} id={s.id} className="card scroll-mt-48 overflow-hidden">
+          <div className="flex items-center gap-4 bg-navy px-6 py-4 text-white">
+            <span className="font-display text-3xl text-gold">{s.numeral}</span>
+            <div>
+              <div className="font-display text-xs uppercase tracking-[0.18em] text-white/70">Section {s.numeral}</div>
+              <h3 className="text-2xl font-semibold uppercase leading-tight">{s.title}</h3>
+            </div>
+          </div>
+          {s.groups.map((g, gi) => (
+            <div key={gi}>
+              {g.title && (
+                <div className="border-y border-border bg-panel px-6 py-2 font-display text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {g.title}
+                </div>
+              )}
+              <div className="divide-y divide-border">
+                {g.items.map((it) => (
+                  <Subsection key={`${s.id}-${it.num}`} s={it} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </article>
+      ))}
+    </section>
   );
 }

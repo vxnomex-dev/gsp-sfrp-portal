@@ -73,7 +73,7 @@ export type Package = {
   minRank: RankKey;
 };
 
-/** Lighting / livery set-ups. "Supervisory and up" = the Supervisors tier (Corporal) and above. */
+/** Lighting / livery set-ups. Slick tops: Supervisors tier (Corporal) and above. Ghosted: Lieutenant and above. */
 export const PACKAGES: Package[] = [
   {
     key: "marked",
@@ -91,7 +91,7 @@ export const PACKAGES: Package[] = [
     key: "ghost",
     name: "Ghosted",
     description: "Low-visibility ghost livery. Usually paired with a slick top.",
-    minRank: "cpl",
+    minRank: "lieutenant",
   },
 ];
 
