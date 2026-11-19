@@ -27,6 +27,8 @@ async function Picker({ searchParams }: { searchParams: PageProps<"/dev-login">[
     ["command", "Command Staff"],
     ["psb", "Human Resources"],
     ["all", "Command Staff + Human Resources"],
+    ["ootc", "Office of the Colonel"],
+    ["press", "Press Release Team (civilian)"],
   ];
   return (
     <div className="card card-gold p-8">

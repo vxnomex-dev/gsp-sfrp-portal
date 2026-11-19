@@ -113,7 +113,7 @@ function VehicleRegulations({ rank, name }: { rank: RankKey | null; name: string
               return (
                 <div
                   key={i.key}
-                  className={`flex items-center gap-2 rounded-sm border px-3 py-2 text-sm ${ok ? "border-border bg-white text-navy-ink" : "border-dashed border-border bg-panel/60 text-muted-foreground"}`}
+                  className={`flex items-center gap-2 rounded-sm border px-3 py-2 text-sm ${ok ? "border-border bg-card text-navy-ink" : "border-dashed border-border bg-panel/60 text-muted-foreground"}`}
                 >
                   {ok ? <Check size={16} strokeWidth={3} className="shrink-0 text-success" /> : <Lock size={14} className="shrink-0" />}
                   <span className="truncate">{i.label}</span>

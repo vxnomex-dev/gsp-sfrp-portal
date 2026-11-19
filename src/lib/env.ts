@@ -38,6 +38,8 @@ export const env = {
     commandStaff: list(process.env.ROLE_COMMAND_STAFF_IDS || "1558194099327074422,1558194099327074418"),
     /** Command — can review applications (no content editing). */
     applicationReviewers: list(process.env.ROLE_APPLICATION_REVIEWER_IDS || "1558194099297853566"),
+    /** Press Release Team (directed by Lt. Col. Everson) — can publish press releases. */
+    press: list(process.env.ROLE_PRESS_IDS || "1572837412059480144"),
     /** Human Resources (formerly PSB). The ONLY role that can see trooper reports. */
     psb: list(process.env.ROLE_PSB_IDS || "1558194098995732496"),
   },

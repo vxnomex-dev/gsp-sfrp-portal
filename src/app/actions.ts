@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { THEME_COOKIE } from "@/lib/theme";
 import { query, queryOne } from "@/lib/db";
 import { getViewer } from "@/lib/session";
 import { env } from "@/lib/env";
@@ -299,4 +300,80 @@ export async function saveAssignments(_: FormState, fd: FormData): Promise<FormS
   await saveAssignmentsData({ slots, ranks });
   refresh();
   return { ok: true, message: "Assignments saved — the roster is updated." };
+}
+
+/* ------------------------------------------------------------------ */
+/* Notifications & profile                                             */
+/* ------------------------------------------------------------------ */
+
+export async function publishNotification(_: FormState, fd: FormData): Promise<FormState> {
+  const values = formValues(fd);
+  const viewer = await getViewer();
+  if (!viewer) return { message: "Your session expired. Please log in again.", values };
+  const { NOTIFICATION_KINDS, ALERT_TYPES, createNotification, sendNotificationDMs } = await import("@/lib/notifications");
+  const kind = values.kind as keyof typeof NOTIFICATION_KINDS;
+  const meta = NOTIFICATION_KINDS[kind];
+  if (!meta) return { message: "Pick what you're publishing.", values };
+  if (!viewer.can(meta.permission)) return { message: `You don't have permission to publish ${meta.plural.toLowerCase()}.`, values };
+
+  const errors: Record<string, string> = {};
+  const alertType = kind === "alert" ? (values.alert_type as keyof typeof ALERT_TYPES) : null;
+  if (kind === "alert" && (!alertType || !ALERT_TYPES[alertType])) errors.alert_type = "Choose the alert type.";
+  const title = (values.title ?? "").trim();
+  const body = (values.body ?? "").trim();
+  if (title.length < 3) errors.title = "Add a headline.";
+  if (title.length > 150) errors.title = "Keep the headline under 150 characters.";
+  if (body.length < 10) errors.body = "Add the details.";
+  if (body.length > 3000) errors.body = "Keep it under 3,000 characters.";
+  if (Object.keys(errors).length) return { errors, values };
+
+  const n = await createNotification({ kind, alertType, title, body, authorId: viewer.uid, authorName: viewer.displayName });
+  if (values.send_dms === "on") {
+    const { after } = await import("next/server");
+    after(() => sendNotificationDMs(n).catch((e) => console.error("[notifications] DMs failed", e)));
+  } else {
+    await query(`UPDATE notifications SET dm_done=true WHERE id=$1`, [n.id]);
+  }
+  refresh();
+  return {
+    ok: true,
+    ref: String(n.id),
+    message: `${meta.label} published.${values.send_dms === "on" ? " DMs to subscribers are going out now." : ""}`,
+  };
+}
+
+export async function removeNotification(fd: FormData) {
+  const viewer = await getViewer();
+  const { NOTIFICATION_KINDS, deleteNotification } = await import("@/lib/notifications");
+  const id = Number(fd.get("id"));
+  const row = await queryOne<{ kind: keyof typeof NOTIFICATION_KINDS }>(`SELECT kind FROM notifications WHERE id=$1`, [id]);
+  if (!viewer || !row || !viewer.can(NOTIFICATION_KINDS[row.kind].permission)) throw new Error("You do not have permission to do that.");
+  await deleteNotification(id);
+  refresh();
+}
+
+/** Called when the notification bell is opened. */
+export async function markNotificationsSeen() {
+  const viewer = await getViewer();
+  if (!viewer) return;
+  const { markSeen } = await import("@/lib/notifications");
+  await markSeen(viewer.uid, viewer.username);
+}
+
+export async function saveProfile(_: FormState, fd: FormData): Promise<FormState> {
+  const viewer = await getViewer();
+  if (!viewer) return { message: "Your session expired. Please log in again." };
+  const { savePrefs } = await import("@/lib/notifications");
+  const theme = (["light", "dark", "system"] as const).find((t) => t === fd.get("theme")) ?? "light";
+  const personnel = viewer.can("portal");
+  await savePrefs(viewer.uid, viewer.username, {
+    dm_alerts: fd.get("dm_alerts") === "on",
+    dm_press: fd.get("dm_press") === "on",
+    dm_info: personnel && fd.get("dm_info") === "on",
+    theme,
+  });
+  const { cookies } = await import("next/headers");
+  (await cookies()).set(THEME_COOKIE, theme, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  refresh();
+  return { ok: true, message: "Settings saved." };
 }

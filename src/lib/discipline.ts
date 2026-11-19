@@ -73,29 +73,38 @@ function explain(e: unknown) {
 /* Promotions                                                          */
 /* ------------------------------------------------------------------ */
 
+/** "𝐆𝐒𝐏 | Captain" → "Captain" (falls back to a role mention if the name is unknown). */
+function roleLabel(roleId: string, names: Map<string, string>) {
+  const n = names.get(roleId);
+  if (!n) return `<@&${roleId}>`;
+  return n.normalize("NFKC").replace(/^\s*GSP\s*[|│¦:\-–—]\s*/i, "").trim() || n;
+}
+
 function promotionMessage(p: {
+  id: number;
   userId: string;
-  oldRoleId: string;
-  newRoleId: string;
+  oldRank: string;
+  newRank: string;
   callsign: number | null;
   reason: string;
   issuerId: string;
+  at: Date;
 }): Component[] {
+  const t = unix(p.at);
   return [
-    text(`<@${p.userId}>`),
     container([
-      text(`## 🎖️ Promotion\nCongratulations <@${p.userId}>! You have been promoted.`),
-      divider(),
+      text(`> <@${p.userId}> has been promoted to **${clean(p.newRank, 60)}** on <t:${t}:D> at <t:${t}:t>.`),
       text(
-        `> **Member:** <@${p.userId}>\n` +
-          `> **Previous Rank:** <@&${p.oldRoleId}>\n` +
-          `> **New Rank:** <@&${p.newRoleId}>\n` +
-          `> **New Callsign:** ${p.callsign !== null ? `\`${p.callsign}\`` : "_Unassigned_"}`,
+        `**Previous Rank:** ${clean(p.oldRank, 60)}\n` +
+          `**New Rank:** ${clean(p.newRank, 60)}\n` +
+          `**Callsign:** ${p.callsign !== null ? p.callsign : "Unassigned"}\n` +
+          `**Reason:** ${clean(p.reason, 800)}`,
+      ),
+      text(
+        `-# Congratulations, and thank you for your continued service to the Georgia State Patrol.\n` +
+          `-# ID: ${p.id} | Promoted by: <@${p.issuerId}>`,
       ),
       divider(),
-      text(`**Reason**\n${quote(p.reason, 800)}`),
-      divider(),
-      text(`-# Promoted by <@${p.issuerId}> • <t:${unix()}:f> • Georgia State Patrol — ${site.community}`),
     ]),
   ];
 }
@@ -135,18 +144,30 @@ export async function runPromotion(opts: {
     if (nickError) problems.push(`Nickname not updated: ${nickError}`);
     invalidateRosterCache();
 
+    // Record it first so the announcement can show its ID
+    const rec = (await queryOne<{ id: number; created_at: string | Date }>(
+      `INSERT INTO promotions (user_id, old_role_id, new_role_id, reason, old_callsign, new_callsign, issuer_id, issuer_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, created_at`,
+      [userId, oldRoleId, newRoleId, reason, oldCallsign, newCallsign, issuer.user.id, displayName(issuer)],
+    ))!;
+    const names = new Map((await fetchGuildRoles().catch(() => [])).map((r) => [r.id, r.name]));
+
     // Announcement
     const channelId = DISCIPLINE.promotionsChannelId || opts.commandChannelId;
     const msg = await postChannelMessage(channelId, {
-      components: promotionMessage({ userId, oldRoleId, newRoleId, callsign: newCallsign, reason, issuerId: issuer.user.id }),
+      components: promotionMessage({
+        id: rec.id,
+        userId,
+        oldRank: roleLabel(oldRoleId, names),
+        newRank: roleLabel(newRoleId, names),
+        callsign: newCallsign,
+        reason,
+        issuerId: issuer.user.id,
+        at: new Date(rec.created_at),
+      }),
       allowed_mentions: { parse: [], users: [userId] },
     });
-
-    await query(
-      `INSERT INTO promotions (user_id, old_role_id, new_role_id, reason, old_callsign, new_callsign, issuer_id, issuer_name, channel_id, message_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [userId, oldRoleId, newRoleId, reason, oldCallsign, newCallsign, issuer.user.id, displayName(issuer), msg.channel_id, msg.id],
-    );
+    await query(`UPDATE promotions SET channel_id=$1, message_id=$2 WHERE id=$3`, [msg.channel_id, msg.id, rec.id]);
 
     await editInteractionResponse(token, {
       content:
@@ -171,6 +192,7 @@ type Infraction = {
   user_name: string;
   kind: InfractionKind;
   reason: string;
+  policy: string | null;
   duration: string | null;
   issuer_id: string;
   issuer_name: string;
@@ -185,54 +207,65 @@ type Infraction = {
   created_at: string | Date;
 };
 
-function infractionMessage(inf: Infraction): Component[] {
-  const voided = inf.status === "voided";
-  const details =
-    `> **Member:** <@${inf.user_id}>\n` +
-    `> **Type:** ${INFRACTION_TYPES[inf.kind]}\n` +
-    (inf.duration ? `> **Duration:** ${clean(inf.duration, 60)}\n` : "") +
-    `> **Issued by:** <@${inf.issuer_id}>\n` +
-    `> **Date:** <t:${unix(new Date(inf.created_at))}:f>`;
+const article = (word: string) => (/^[aeiou]/i.test(word) ? "an" : "a");
+
+/** "has received a **Warning** from **Human Resources** for **Shift Grinding**" */
+function infractionSentence(inf: Infraction, subject: string) {
+  const type = INFRACTION_TYPES[inf.kind];
+  const t = unix(new Date(inf.created_at));
+  const verb =
+    inf.kind === "termination"
+      ? `${subject === "You" ? "have" : "has"} been **terminated** from the Georgia State Patrol by **Human Resources**`
+      : `${subject === "You" ? "have" : "has"} received ${article(type)} **${type}** from **Human Resources**`;
+  const forWhat = inf.policy ? ` for **${clean(inf.policy, 100)}**` : "";
+  return `> ${subject} ${verb}${forWhat} on <t:${t}:D> at <t:${t}:t>.`;
+}
+
+function infractionDetails(inf: Infraction) {
+  const lines: string[] = [];
+  if (inf.policy) lines.push(`**Policy Broken:** ${clean(inf.policy, 100)}`);
+  lines.push(`**${inf.policy ? "Description" : "Reason"}:** ${clean(inf.reason, 1000)}`);
+  if (inf.duration) lines.push(`**Duration:** ${clean(inf.duration, 60)}`);
+  return lines.join("\n");
+}
+
+function voidBlock(inf: Infraction): Component[] {
+  if (inf.status !== "voided") return [];
   return [
-    text(`<@${inf.user_id}>`),
+    divider(),
+    text(
+      `**Status:** Voided by <@${inf.voided_by_id}>` +
+        (inf.voided_at ? ` on <t:${unix(new Date(inf.voided_at))}:D>` : "") +
+        (inf.void_reason ? `\n**Void Reason:** ${clean(inf.void_reason, 400)}` : ""),
+    ),
+  ];
+}
+
+function infractionMessage(inf: Infraction): Component[] {
+  return [
     container([
-      text(voided ? `## 🚫 Infraction Voided\n-# ${caseRef(inf.id)}` : `## ⚖️ Infraction Issued\n-# ${caseRef(inf.id)}`),
+      text(infractionSentence(inf, `<@${inf.user_id}>`)),
+      text(infractionDetails(inf)),
+      ...voidBlock(inf),
+      text(
+        `-# If you have any questions or concerns, please contact Human Resources.\n` +
+          `-# ID: ${inf.id} | Issued by: <@${inf.issuer_id}>`,
+      ),
       divider(),
-      text(details),
-      divider(),
-      text(`**Reason**\n${quote(inf.reason, 800)}`),
-      ...(voided
-        ? [
-            divider(),
-            text(
-              `**Voided by** <@${inf.voided_by_id}>` +
-                (inf.voided_at ? ` • <t:${unix(new Date(inf.voided_at))}:f>` : "") +
-                (inf.void_reason ? `\n${quote(inf.void_reason, 400)}` : ""),
-            ),
-          ]
-        : [divider(), text(`-# Evidence for this case is kept in the thread below.`)]),
     ]),
   ];
 }
 
 function infractionDM(inf: Infraction): Component[] {
-  const type = INFRACTION_TYPES[inf.kind];
   return [
     container([
+      text(infractionSentence(inf, "You")),
+      text(infractionDetails(inf)),
       text(
-        inf.kind === "termination"
-          ? `## Termination Notice\nYou have been **terminated** from the Georgia State Patrol.`
-          : `## Infraction Notice\nYou have received a **${type}** from the Georgia State Patrol.`,
+        `-# If you believe this was issued in error, open a Command Support ticket in the ${clean(site.community, 60)} Discord.\n` +
+          `-# ID: ${inf.id} | Issued by: ${clean(inf.issuer_name, 40)}`,
       ),
       divider(),
-      text(
-        `> **Case:** #${inf.id}\n> **Type:** ${type}\n` +
-          (inf.duration ? `> **Duration:** ${clean(inf.duration, 60)}\n` : "") +
-          `> **Issued by:** ${clean(inf.issuer_name, 40)}`,
-      ),
-      text(`**Reason**\n${quote(inf.reason, 800)}`),
-      divider(true),
-      text(`-# If you believe this was issued in error, open a Command Support ticket. • Georgia State Patrol — ${site.community}`),
     ]),
   ];
 }
@@ -265,7 +298,7 @@ async function stripRoles(userId: string, problems: string[]) {
   return removed;
 }
 
-export function suspensionModal(userId: string, kind: InfractionKind, reason: string) {
+export function suspensionModal(userId: string, kind: InfractionKind, reason: string, policy: string | null) {
   return {
     type: 9,
     data: {
@@ -292,6 +325,20 @@ export function suspensionModal(userId: string, kind: InfractionKind, reason: st
             { type: 4, custom_id: "reason", label: "Reason", style: 2, required: true, max_length: 1000, value: reason.slice(0, 1000) },
           ],
         },
+        {
+          type: 1,
+          components: [
+            {
+              type: 4,
+              custom_id: "policy",
+              label: "Policy broken (optional)",
+              style: 1,
+              required: false,
+              max_length: 100,
+              ...(policy ? { value: policy.slice(0, 100) } : {}),
+            },
+          ],
+        },
       ],
     },
   };
@@ -305,17 +352,19 @@ export async function runInfraction(opts: {
   userName: string;
   kind: InfractionKind;
   reason: string;
+  policy: string | null;
   duration: string | null;
 }) {
   const { token, issuer, userId, kind, reason, duration } = opts;
+  const policy = opts.policy?.trim() || null;
   const problems: string[] = [];
   try {
     let userName = opts.userName;
     if (!userName) userName = await fetchGuildMember(userId).then((m) => m.user.username).catch(() => userId);
     const row = await queryOne<Infraction>(
-      `INSERT INTO infractions (user_id, user_name, kind, reason, duration, issuer_id, issuer_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [userId, userName, kind, reason, duration, issuer.user.id, displayName(issuer)],
+      `INSERT INTO infractions (user_id, user_name, kind, reason, policy, duration, issuer_id, issuer_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [userId, userName, kind, reason, policy, duration, issuer.user.id, displayName(issuer)],
     );
     const inf = row!;
 
@@ -400,7 +449,7 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
     }
     if (inf.thread_id) {
       await postChannelMessage(inf.thread_id, {
-        components: [container([text(`🚫 **${caseRef(inf.id)}** was voided by <@${issuer.user.id}>.`)], false)],
+        components: [container([text(`**${caseRef(inf.id)}** was voided by <@${issuer.user.id}>.`)], false)],
       }).catch(() => {});
     }
 
@@ -416,10 +465,10 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
 
     await sendDirectMessageV2(inf.user_id, [
       container([
-        text(`## Infraction Voided\nYour **${INFRACTION_TYPES[inf.kind]}** (${caseRef(inf.id)}) has been **voided** and removed from your record.`),
-        ...(opts.reason ? [divider(), text(`**Reason**\n${quote(opts.reason, 400)}`)] : []),
-        divider(true),
-        text(`-# Georgia State Patrol — ${site.community}`),
+        text(`> Your **${INFRACTION_TYPES[inf.kind]}** (ID: ${inf.id}) has been **voided** and removed from your record.`),
+        ...(opts.reason ? [text(`**Reason:** ${clean(opts.reason, 400)}`)] : []),
+        text(`-# Georgia State Patrol — ${clean(site.community, 60)}`),
+        divider(),
       ]),
     ]);
 
@@ -472,6 +521,7 @@ export const DISCIPLINE_COMMANDS = [
             required: true,
             choices: (Object.keys(INFRACTION_TYPES) as InfractionKind[]).map((k) => ({ name: INFRACTION_TYPES[k], value: k })),
           },
+          { type: 3, name: "policy", description: "Policy broken, e.g. Shift Grinding (optional)", required: false, max_length: 100 },
         ],
       },
       {

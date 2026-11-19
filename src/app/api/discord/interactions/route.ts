@@ -233,13 +233,14 @@ export async function POST(req: NextRequest) {
             const userId = subOption(i, "user")!;
             const kind = subOption(i, "type") as InfractionKind;
             const reason = subOption(i, "reason") ?? "";
+            const policy = subOption(i, "policy");
             if (!INFRACTION_TYPES[kind]) return ephemeral("❌ Unknown infraction type.");
             if (i.data?.resolved?.users?.[userId]?.bot) return ephemeral("❌ You can't infract a bot.");
             if (userId === member.user.id) return ephemeral("❌ You can't infract yourself.");
-            if (kind === "suspension") return json(suspensionModal(userId, kind, reason));
+            if (kind === "suspension") return json(suspensionModal(userId, kind, reason, policy));
             const userName = i.data?.resolved?.users?.[userId]?.username ?? "";
             after(() =>
-              runInfraction({ token: i.token, commandChannelId: channelId, issuer: member, userId, userName, kind, reason, duration: null }),
+              runInfraction({ token: i.token, commandChannelId: channelId, issuer: member, userId, userName, kind, reason, policy, duration: null }),
             );
             return deferPrivate();
           }
@@ -266,6 +267,7 @@ export async function POST(req: NextRequest) {
       const [userId, kind] = cid.slice(SUSPENSION_MODAL_PREFIX.length).split(":");
       const duration = modalValue(i, "duration").trim();
       const reason = modalValue(i, "reason").trim();
+      const policy = modalValue(i, "policy").trim() || null;
       if (!duration) return ephemeral("❌ A suspension needs a duration.");
       if (!reason) return ephemeral("❌ A reason is required.");
       const member = i.member;
@@ -278,6 +280,7 @@ export async function POST(req: NextRequest) {
           userName: "",
           kind: (kind as InfractionKind) || "suspension",
           reason,
+          policy,
           duration,
         }),
       );

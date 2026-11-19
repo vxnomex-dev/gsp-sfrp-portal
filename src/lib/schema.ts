@@ -126,6 +126,31 @@ export const SCHEMA_SQL = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS infractions_user_idx ON infractions (user_id)`,
+  `ALTER TABLE infractions ADD COLUMN IF NOT EXISTS policy TEXT`,
+  `CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    alert_type TEXT,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    author_id TEXT NOT NULL,
+    author_name TEXT NOT NULL,
+    dm_sent INTEGER NOT NULL DEFAULT 0,
+    dm_failed INTEGER NOT NULL DEFAULT 0,
+    dm_done BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS notifications_created_idx ON notifications (created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS user_prefs (
+    user_id TEXT PRIMARY KEY,
+    username TEXT,
+    dm_alerts BOOLEAN NOT NULL DEFAULT false,
+    dm_press BOOLEAN NOT NULL DEFAULT false,
+    dm_info BOOLEAN NOT NULL DEFAULT false,
+    theme TEXT NOT NULL DEFAULT 'light',
+    notif_seen_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
   `CREATE INDEX IF NOT EXISTS tickets_open_idx ON tickets (opener_id, kind, status)`,
 ];
 

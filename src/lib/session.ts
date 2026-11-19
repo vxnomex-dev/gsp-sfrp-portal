@@ -67,9 +67,11 @@ function devAccess(as: string): { permissions: Permission[]; labels: string[] } 
   const map: Record<string, { permissions: Permission[]; labels: string[] }> = {
     public: { permissions: [], labels: [] },
     employee: { permissions: ["portal"], labels: ["Department Personnel"] },
-    command: { permissions: ["portal", "applications", "content"], labels: ["High Command"] },
+    command: { permissions: ["portal", "applications", "content", "notices"], labels: ["High Command"] },
+    ootc: { permissions: ["portal", "applications", "content", "reports", "alerts", "press", "notices"], labels: ["Office of the Colonel"] },
+    press: { permissions: ["press"], labels: ["Press Release Team"] },
     psb: { permissions: ["portal", "reports"], labels: ["Human Resources"] },
-    all: { permissions: ["portal", "applications", "content", "reports"], labels: ["High Command", "Human Resources"] },
+    all: { permissions: ["portal", "applications", "content", "reports", "alerts", "press", "notices"], labels: ["High Command", "Human Resources"] },
   };
   return map[as] ?? map.public;
 }

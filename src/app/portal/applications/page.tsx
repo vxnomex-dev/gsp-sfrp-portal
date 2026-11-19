@@ -45,7 +45,7 @@ async function ApplicationsList({ searchParams }: { searchParams: PageProps<"/po
             key={t.key}
             href={`/portal/applications?status=${t.key}`}
             className={`rounded-sm border px-3 py-1.5 font-display text-sm uppercase tracking-wide ${
-              filter === t.key ? "border-navy bg-navy text-white" : "border-border bg-white text-navy hover:border-navy"
+              filter === t.key ? "border-navy bg-navy text-white" : "border-border bg-card text-navy hover:border-navy"
             }`}
           >
             {t.label}

@@ -45,7 +45,7 @@ export function Header() {
               <div className="font-display text-lg font-semibold uppercase leading-tight tracking-wide text-white sm:text-[1.4rem]">
                 {site.name}
               </div>
-              <div className="mt-1 hidden font-display text-[0.7rem] uppercase tracking-[0.2em] text-gold min-[400px]:block sm:text-xs">
+              <div className="mt-1 hidden font-display text-[0.7rem] uppercase tracking-[0.2em] text-gold min-[440px]:block sm:text-xs">
                 {site.subtitle}
               </div>
             </div>

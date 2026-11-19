@@ -1,3 +1,5 @@
+import { queryOne } from "@/lib/db";
+import { THEME_COOKIE } from "@/lib/theme";
 import { NextResponse, type NextRequest } from "next/server";
 import { exchangeCode, fetchMemberRoles, fetchUser } from "@/lib/discord";
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
@@ -47,6 +49,13 @@ export async function GET(req: NextRequest) {
     res.cookies.set(SESSION_COOKIE, jwt, sessionCookieOptions);
     res.cookies.delete("gsp_oauth_state");
     res.cookies.delete("gsp_oauth_next");
+    // Bring their saved light/dark choice to this device
+    try {
+      const prefs = await queryOne<{ theme: string }>(`SELECT theme FROM user_prefs WHERE user_id=$1`, [user.id]);
+      if (prefs) res.cookies.set(THEME_COOKIE, prefs.theme, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+    } catch {
+      /* not important */
+    }
     return res;
   } catch (e) {
     console.error("[auth] callback failed", e);

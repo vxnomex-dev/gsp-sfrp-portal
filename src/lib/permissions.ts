@@ -5,7 +5,10 @@ export type Permission =
   | "portal" // employee portal
   | "applications" // view + decide cadet applications
   | "reports" // Human Resources only
-  | "content"; // edit command staff + divisions
+  | "content" // edit command staff + divisions
+  | "alerts" // publish statewide alerts (Office of the Colonel)
+  | "press" // publish press releases (Press Release Team + Office of the Colonel)
+  | "notices"; // publish important info to department personnel (Office of the Colonel + High Command)
 
 export type Access = {
   permissions: Permission[];
@@ -30,11 +33,12 @@ export function resolveAccess(roleIds: string[]): Access {
     perms.add("portal");
     perms.add("applications");
     perms.add("content");
+    perms.add("notices");
     labels.push("High Command");
   }
   // Office of the Colonel: everything.
   if (has(env.roles.ootc)) {
-    for (const p of ["portal", "applications", "content", "reports"] as const) perms.add(p);
+    for (const p of ["portal", "applications", "content", "reports", "alerts", "press", "notices"] as const) perms.add(p);
     labels.unshift("Office of the Colonel");
   }
   // Otherwise reports are tied to Human Resources only — High Command / Command do not get them automatically.
@@ -42,6 +46,10 @@ export function resolveAccess(roleIds: string[]): Access {
     perms.add("portal");
     perms.add("reports");
     labels.push("Human Resources");
+  }
+  if (has(env.roles.press)) {
+    perms.add("press");
+    labels.push("Press Release Team");
   }
   return { permissions: [...perms], labels };
 }

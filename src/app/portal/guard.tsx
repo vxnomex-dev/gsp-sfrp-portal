@@ -11,9 +11,14 @@ const messages: Record<Permission, string> = {
   applications: "Only command staff and application reviewers can view cadet applications.",
   reports: "Employee reports are restricted to Human Resources and the Office of the Colonel.",
   content: "Only command staff can edit website content.",
+  alerts: "Only the Office of the Colonel can issue statewide alerts.",
+  press: "Only the Press Release Team can publish press releases.",
+  notices: "Only High Command and the Office of the Colonel can post department notices.",
 };
 
-export async function guard(perm: Permission, next: string): Promise<GuardResult> {
+export async function guard(perms: Permission | Permission[], next: string): Promise<GuardResult> {
+  const list = Array.isArray(perms) ? perms : [perms];
+  const perm = list[0];
   const viewer = await getViewer();
   if (!viewer) {
     return {
@@ -25,13 +30,13 @@ export async function guard(perm: Permission, next: string): Promise<GuardResult
       ),
     };
   }
-  if (!viewer.can(perm)) {
+  if (!list.some((p) => viewer.can(p))) {
     return {
       denied: (
         <div className="card card-gold mx-auto max-w-xl p-8 text-center">
           <ShieldX className="mx-auto text-destructive" size={44} />
           <h2 className="mt-3 text-2xl font-semibold uppercase text-navy-ink">Access denied</h2>
-          <p className="mt-3 text-muted-foreground">{messages[perm]}</p>
+          <p className="mt-3 text-muted-foreground">{list.length > 1 ? "You don't have access to this page." : messages[perm]}</p>
           <p className="mt-2 text-sm text-muted-foreground">
             If you were recently given a role in Discord, it can take up to a minute to sync.
           </p>

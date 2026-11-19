@@ -152,13 +152,13 @@ export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[]
   .att{max-width:400px;max-height:300px;border-radius:6px;margin-top:4px;display:block}.file{display:inline-block;margin-top:4px}
   .muted{color:#949ba4;font-style:italic}.foot{color:#949ba4;font-size:12px;text-align:center;margin-top:12px}
 </style></head><body><div class="wrap">
-<img class="banner" src="${esc(env.baseUrl)}/images/gsp-banner-2.jpg" alt="Georgia State Patrol">
+<img class="banner" src="${esc(env.baseUrl)}/images/gsp-banner-3.jpg" alt="Georgia State Patrol">
 <h1>${esc(meta.kindLabel)} — Ticket #${meta.ticketId}</h1>
 <p class="lead">Georgia State Patrol • South Fulton Roleplay • Transcript</p>
 <div class="info">${info.map(([k, v]) => `<div><span>${k}</span>${esc(v)}</div>`).join("")}</div>
 <div class="inq"><b>What's up?</b>${esc(meta.inquiry)}</div>
 ${rows || '<p class="muted">No messages.</p>'}
-<img class="banner footer" src="${esc(env.baseUrl)}/images/gsp-footer-2.jpg" alt="Georgia State Patrol">
+<img class="banner footer" src="${esc(env.baseUrl)}/images/gsp-footer-3.jpg" alt="Georgia State Patrol">
 <div class="foot">Generated ${esc(fmtTime(meta.closedAt))} • Georgia State Patrol</div>
 </div></body></html>`;
 }

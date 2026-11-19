@@ -29,6 +29,8 @@ export const site = {
       report: "/images/explorer-rear.jpg",
       roster: "/images/post-charger.jpg",
       department: "/images/traffic-stop.jpg",
+      notifications: "/images/moonlight-charger.jpg",
+      profile: "/images/explorer-pier.jpg",
     } as Record<string, string | null>,
     // "On Patrol" photo strip on the home page
     gallery: [

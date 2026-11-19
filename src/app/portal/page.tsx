@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Car, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
+import { Car, Megaphone, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
 import { guard } from "./guard";
 import { getCounts } from "@/lib/data";
 import { avatarUrl } from "@/lib/discord";
@@ -25,6 +25,12 @@ async function Dashboard() {
       icon: Car,
       title: "Department Information",
       body: "Vehicle regulations and other internal references.",
+    },
+    (viewer.can("alerts") || viewer.can("press") || viewer.can("notices")) && {
+      href: "/portal/notifications",
+      icon: Megaphone,
+      title: "Publish a Release",
+      body: "Statewide alerts, press releases and important info.",
     },
     viewer.can("applications") && {
       href: "/portal/applications",

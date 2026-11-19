@@ -116,8 +116,8 @@ export function Checkbox({ name, label, error, defaultChecked }: { name: string;
 export function Alert({ tone = "info", children }: { tone?: "info" | "error" | "success"; children: React.ReactNode }) {
   const styles = {
     info: "border-gold bg-panel text-foreground",
-    error: "border-destructive bg-[oklch(96%_0.03_27)] text-[oklch(40%_0.15_27)]",
-    success: "border-success bg-[oklch(96%_0.04_155)] text-[oklch(35%_0.1_155)]",
+    error: "border-destructive bg-destructive/10 text-destructive",
+    success: "border-success bg-success/10 text-success",
   }[tone];
   return <div className={`border-l-4 px-5 py-4 ${styles}`} role={tone === "error" ? "alert" : "status"}>{children}</div>;
 }

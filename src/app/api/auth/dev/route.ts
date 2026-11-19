@@ -9,7 +9,7 @@ import { createSessionToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/
 export async function POST(req: NextRequest) {
   if (!env.devLogin) return new NextResponse("Not found", { status: 404 });
   const form = await req.formData();
-  const as = ["public", "employee", "command", "psb", "all"].includes(String(form.get("as"))) ? String(form.get("as")) : "public";
+  const as = ["public", "employee", "command", "psb", "all", "ootc", "press"].includes(String(form.get("as"))) ? String(form.get("as")) : "public";
   const next = String(form.get("next") || "/portal");
 
   const jwt = await createSessionToken({
