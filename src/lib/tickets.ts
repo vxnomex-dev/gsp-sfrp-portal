@@ -52,7 +52,6 @@ export const TICKET_TYPES: Record<
     pingRoles: string[];
     summary: string;
     placeholder: string;
-    emoji: string;
   }
 > = {
   general: {
@@ -63,7 +62,6 @@ export const TICKET_TYPES: Record<
     pingRoles: [ROLE.supervisor],
     summary: "General concerns, questions and inquiries.",
     placeholder: "How can General Support help?",
-    emoji: "💬",
   },
   divisional: {
     label: "Divisional Support",
@@ -74,7 +72,6 @@ export const TICKET_TYPES: Record<
     summary:
       "Specialty unit applications, division transfers, division questions, training requests, qualification requests, operational concerns, unit activity requests and other matters related to specialized divisions.",
     placeholder: "How can Divisional Support help?",
-    emoji: "🚓",
   },
   command: {
     label: "Command Support",
@@ -84,7 +81,6 @@ export const TICKET_TYPES: Record<
     pingRoles: [ROLE.highCommand, ROLE.command],
     summary: "Leadership concerns, administrative matters and issues requiring review by the Office of the Colonel.",
     placeholder: "How can Command Support help?",
-    emoji: "⭐",
   },
 };
 
@@ -194,7 +190,6 @@ export function buildPanel(): Component[] {
             options: (Object.keys(TICKET_TYPES) as TicketKind[]).map((k) => ({
               label: TICKET_TYPES[k].label,
               value: k,
-              emoji: { name: TICKET_TYPES[k].emoji },
             })),
           },
         ],
@@ -354,7 +349,7 @@ export async function claimTicket(channelId: string, member: Member): Promise<Re
     data: v2(
       [
         container([
-          text(`### ✅ Ticket Claimed\n<@${member.user.id}> has claimed this ticket and will be assisting you, <@${t.opener_id}>.`),
+          text(`### Ticket Claimed\n<@${member.user.id}> has claimed this ticket and will be assisting you, <@${t.opener_id}>.`),
         ], false),
       ],
       { allowed_mentions: { parse: [], users: [t.opener_id] } },
@@ -383,7 +378,7 @@ export async function renameTicket(channelId: string, member: Member, requested:
     await query(`UPDATE tickets SET channel_name=$1 WHERE id=$2`, [ch.name, t.id]);
     return {
       type: 4,
-      data: v2([container([text(`✏️ <@${member.user.id}> renamed this ticket to **#${ch.name}**.`)], false)]),
+      data: v2([container([text(`<@${member.user.id}> renamed this ticket to **#${ch.name}**.`)], false)]),
     };
   } catch (e) {
     if (e instanceof DiscordError && e.status === 429) {
@@ -421,7 +416,7 @@ export async function startClose(channelId: string, member: Member, reason: stri
       data: v2([
         container([
           text(
-            `### 🔒 Closing Ticket\nThis ticket was closed by <@${member.user.id}> and will be deleted in **5 seconds**.\n**Reason:** ${clean(why, 300)}`,
+            `### Closing Ticket\nThis ticket was closed by <@${member.user.id}> and will be deleted in **5 seconds**.\n**Reason:** ${clean(why, 300)}`,
           ),
         ], false),
       ]),
@@ -480,7 +475,7 @@ export async function finishClose(t: Ticket, member: Member, reason: string) {
       `> **Messages:** ${messageCount}`;
     const log = [
       container([
-        text(`### 📁 Ticket Closed — ${cfg.label} #${t.id}`),
+        text(`### Ticket Closed — ${cfg.label} #${t.id}`),
         text(details),
         ...(transcript ? [fileComponent(transcript.name)] : [text("-# Transcript unavailable.")]),
       ]),
@@ -569,7 +564,7 @@ export async function keepOpen(channelId: string, member: Member): Promise<Reply
 export async function postPanel(channelId: string): Promise<Reply> {
   try {
     await postChannelMessage(channelId, { components: buildPanel() });
-    return privateReply("Support panel posted. ✅");
+    return privateReply("Support panel posted.");
   } catch (e) {
     console.error("[tickets] panel post failed", e);
     return privateReply("I couldn't post here — make sure I can View Channel and Send Messages in this channel.");

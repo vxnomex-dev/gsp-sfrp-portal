@@ -93,15 +93,15 @@ export function buildApplicationMessage(a: AppForMessage, { withButtons }: { wit
     footer = [
       text(
         a.status === "accepted"
-          ? `### ✅ Accepted by ${by}${when}\n-# The applicant has been sent their next steps by DM.`
-          : `### ❌ Denied by ${by}${when}\n**Reason:**\n${quote(a.denial_reason, 500)}\n-# The applicant has been notified by DM.`,
+          ? `### Accepted by ${by}${when}\n-# The applicant has been sent their next steps by DM.`
+          : `### Denied by ${by}${when}\n**Reason:**\n${quote(a.denial_reason, 500)}\n-# The applicant has been notified by DM.`,
       ),
     ];
   } else if (withButtons) {
     footer = [
       buttonRow([
-        { id: `${ACCEPT_PREFIX}${a.id}`, label: "Accept", style: 3, emoji: "✅" },
-        { id: `${DENY_PREFIX}${a.id}`, label: "Deny", style: 4, emoji: "✖️" },
+        { id: `${ACCEPT_PREFIX}${a.id}`, label: "Accept", style: 3 },
+        { id: `${DENY_PREFIX}${a.id}`, label: "Deny", style: 4 },
       ]),
     ];
   } else {
@@ -116,7 +116,7 @@ export function buildApplicationMessage(a: AppForMessage, { withButtons }: { wit
       text(`${roleId ? `<@&${roleId}> ` : ""}<@${a.discord_id}>`),
       container([
         section(
-          `## 🚔 New Cadet Application\n-# ${appRef(a.id)} • Georgia State Patrol • <t:${submitted}:f>\n\n` +
+          `## New Cadet Application\n-# ${appRef(a.id)} • Georgia State Patrol • <t:${submitted}:f>\n\n` +
             `**Applicant:** <@${a.discord_id}> (\`${clean(a.discord_username, 40)}\`)\n` +
             `**Roblox:** ${clean(a.roblox_username, 40)}\n` +
             `**Age:** ${a.age}  •  **Timezone:** ${clean(a.timezone, 40)}\n` +
@@ -167,7 +167,7 @@ export function acceptedDM(a: { id: number; discord_id: string }): Component[] {
   return [
     container([
       text(
-        `## ✅ Cadet Application Accepted\n` +
+        `## Cadet Application Accepted\n` +
           `Congratulations <@${a.discord_id}>! Your application to the **Georgia State Patrol** has been **accepted**.\n-# ${appRef(a.id)}`,
       ),
       divider(),

@@ -63,7 +63,7 @@ export function buildReportMessage(r: ReportWebhookInput): Component[] {
   return [
     ...(roleId ? [text(`<@&${roleId}>`)] : []),
     container([
-      text(`## 🛡️ New Employee Report\n-# ${ref} • Human Resources • <t:${unix()}:f>`),
+      text(`## New Employee Report\n-# ${ref} • Human Resources • <t:${unix()}:f>`),
       divider(),
       text(
         `**Trooper reported:** ${clean(r.trooperName, 80)}\n` +

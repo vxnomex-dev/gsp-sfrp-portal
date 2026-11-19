@@ -100,7 +100,7 @@ export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[]
         parts.push(
           a.content_type?.startsWith("image/")
             ? `<a href="${esc(a.url)}" target="_blank"><img class="att" src="${esc(a.url)}" alt="${esc(a.filename)}"></a>`
-            : `<a class="file" href="${esc(a.url)}" target="_blank">📎 ${esc(a.filename)}</a>`,
+            : `<a class="file" href="${esc(a.url)}" target="_blank">${esc(a.filename)}</a>`,
         );
       }
       if (!parts.length) parts.push(`<span class="muted">(no text)</span>`);

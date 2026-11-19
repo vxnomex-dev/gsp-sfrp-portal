@@ -128,7 +128,7 @@ export async function runPromotion(opts: {
     try {
       await addMemberRole(userId, newRoleId);
     } catch (e) {
-      await editInteractionResponse(token, { content: `❌ Couldn't give <@&${newRoleId}>: ${explain(e)}` });
+      await editInteractionResponse(token, { content: `Couldn't give <@&${newRoleId}>: ${explain(e)}` });
       return;
     }
     if (member.roles.includes(oldRoleId)) {
@@ -171,14 +171,14 @@ export async function runPromotion(opts: {
 
     await editInteractionResponse(token, {
       content:
-        `✅ Promoted <@${userId}> to <@&${newRoleId}>` +
+        `Promoted <@${userId}> to <@&${newRoleId}>` +
         (newCallsign !== null ? ` — callsign \`${newCallsign}\`${oldCallsign !== null && oldCallsign !== newCallsign ? ` (was \`${oldCallsign}\`)` : ""}` : "") +
         `. Posted in <#${msg.channel_id}>.` +
-        (problems.length ? `\n⚠️ ${problems.join("\n⚠️ ")}` : ""),
+        (problems.length ? `\n${problems.join("\n")}` : ""),
     });
   } catch (e) {
     console.error("[promote] failed", e);
-    await editInteractionResponse(token, { content: `❌ Promotion failed: ${explain(e)}` }).catch(() => {});
+    await editInteractionResponse(token, { content: `Promotion failed: ${explain(e)}` }).catch(() => {});
   }
 }
 
@@ -412,13 +412,13 @@ export async function runInfraction(opts: {
 
     await editInteractionResponse(token, {
       content:
-        `✅ **${caseRef(inf.id)}** issued to <@${userId}> (${INFRACTION_TYPES[kind]}). Posted in <#${msg.channel_id}>` +
+        `**${caseRef(inf.id)}** issued to <@${userId}> (${INFRACTION_TYPES[kind]}). Posted in <#${msg.channel_id}>` +
         (threadId ? `, evidence thread: <#${threadId}>.` : ".") +
-        (problems.length ? `\n⚠️ ${problems.join("\n⚠️ ")}` : ""),
+        (problems.length ? `\n${problems.join("\n")}` : ""),
     });
   } catch (e) {
     console.error("[infraction] failed", e);
-    await editInteractionResponse(token, { content: `❌ Infraction failed: ${explain(e)}` }).catch(() => {});
+    await editInteractionResponse(token, { content: `Infraction failed: ${explain(e)}` }).catch(() => {});
   }
 }
 
@@ -428,7 +428,7 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
   try {
     const existing = await queryOne<Infraction>(`SELECT * FROM infractions WHERE id=$1`, [caseId]);
     if (!existing) {
-      await editInteractionResponse(token, { content: `❌ ${caseRef(caseId)} doesn't exist.` });
+      await editInteractionResponse(token, { content: `${caseRef(caseId)} doesn't exist.` });
       return;
     }
     if (existing.status === "voided") {
@@ -474,13 +474,13 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
 
     await editInteractionResponse(token, {
       content:
-        `✅ ${caseRef(inf.id)} voided.` +
+        `${caseRef(inf.id)} voided.` +
         (inf.kind === "termination" ? " Their roles have been restored." : "") +
-        (problems.length ? `\n⚠️ ${problems.join("\n⚠️ ")}` : ""),
+        (problems.length ? `\n${problems.join("\n")}` : ""),
     });
   } catch (e) {
     console.error("[void] failed", e);
-    await editInteractionResponse(token, { content: `❌ Couldn't void the case: ${explain(e)}` }).catch(() => {});
+    await editInteractionResponse(token, { content: `Couldn't void the case: ${explain(e)}` }).catch(() => {});
   }
 }
 

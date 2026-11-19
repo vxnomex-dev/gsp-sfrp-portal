@@ -209,13 +209,13 @@ export async function POST(req: NextRequest) {
 
         case "promote": {
           if (!canPromote(i.member)) {
-            return ephemeral("❌ You don't have permission to use `/promote`. Only Command, High Command and the Office of the Colonel can promote.");
+            return ephemeral("You don't have permission to use `/promote`. Only Command, High Command and the Office of the Colonel can promote.");
           }
           const userId = option(i, "user")!;
           const newRoleId = option(i, "new_rank")!;
           const oldRoleId = option(i, "old_rank")!;
-          if (i.data?.resolved?.users?.[userId]?.bot) return ephemeral("❌ You can't promote a bot.");
-          if (newRoleId === oldRoleId) return ephemeral("❌ The new rank and old rank are the same role.");
+          if (i.data?.resolved?.users?.[userId]?.bot) return ephemeral("You can't promote a bot.");
+          if (newRoleId === oldRoleId) return ephemeral("The new rank and old rank are the same role.");
           const member = i.member;
           after(() =>
             runPromotion({ token: i.token, commandChannelId: channelId, issuer: member, userId, oldRoleId, newRoleId, reason: option(i, "reason") ?? "" }),
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
 
         case "infraction": {
           if (!canInfract(i.member)) {
-            return ephemeral("❌ You don't have permission to issue or void infractions. Only Human Resources and the Office of the Colonel can.");
+            return ephemeral("You don't have permission to issue or void infractions. Only Human Resources and the Office of the Colonel can.");
           }
           const sub = subOptions(i)?.name;
           const member = i.member;
@@ -234,9 +234,9 @@ export async function POST(req: NextRequest) {
             const kind = subOption(i, "type") as InfractionKind;
             const reason = subOption(i, "reason") ?? "";
             const policy = subOption(i, "policy");
-            if (!INFRACTION_TYPES[kind]) return ephemeral("❌ Unknown infraction type.");
-            if (i.data?.resolved?.users?.[userId]?.bot) return ephemeral("❌ You can't infract a bot.");
-            if (userId === member.user.id) return ephemeral("❌ You can't infract yourself.");
+            if (!INFRACTION_TYPES[kind]) return ephemeral("Unknown infraction type.");
+            if (i.data?.resolved?.users?.[userId]?.bot) return ephemeral("You can't infract a bot.");
+            if (userId === member.user.id) return ephemeral("You can't infract yourself.");
             if (kind === "suspension") return json(suspensionModal(userId, kind, reason, policy));
             const userName = i.data?.resolved?.users?.[userId]?.username ?? "";
             after(() =>
@@ -263,13 +263,13 @@ export async function POST(req: NextRequest) {
 
     // Suspension details submitted → issue the infraction
     if (i.type === 5 && cid.startsWith(SUSPENSION_MODAL_PREFIX)) {
-      if (!canInfract(i.member)) return ephemeral("❌ You don't have permission to issue infractions.");
+      if (!canInfract(i.member)) return ephemeral("You don't have permission to issue infractions.");
       const [userId, kind] = cid.slice(SUSPENSION_MODAL_PREFIX.length).split(":");
       const duration = modalValue(i, "duration").trim();
       const reason = modalValue(i, "reason").trim();
       const policy = modalValue(i, "policy").trim() || null;
-      if (!duration) return ephemeral("❌ A suspension needs a duration.");
-      if (!reason) return ephemeral("❌ A reason is required.");
+      if (!duration) return ephemeral("A suspension needs a duration.");
+      if (!reason) return ephemeral("A reason is required.");
       const member = i.member;
       after(() =>
         runInfraction({
