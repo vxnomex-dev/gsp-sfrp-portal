@@ -1,3 +1,4 @@
+import { fmtCallsign } from "./callsign";
 import "server-only";
 import { env } from "./env";
 import { query, queryOne } from "./db";
@@ -155,8 +156,14 @@ export type RosterEntry = {
   nickCallsign: number | null;
 };
 
-/** A callsign at the front of a nickname: "602 | Name", "602 I Name", "602 - Name", "602/Name"… */
-const CALLSIGN_PREFIX = /^\s*\d{2,4}\s*(?:[|│¦\-–—:/\\]|\s[Il](?=\s))\s*/;
+/** A callsign at the front of a nickname: "C-07 | Name", "602 | Name", "602 I Name", "602 - Name", "602/Name"… */
+const CALLSIGN_PREFIX = /^\s*(?:C\s*-\s*\d{1,3}|\d{2,4})\s*(?:[|│¦\-–—:/\\]|\s[Il](?=\s))\s*/i;
+
+/**
+ * Automatic callsigns and nicknames are paused until the FHP rank ladder and its C-## numbers are set in RANKS.
+ * While paused nobody is renamed; the roster still lists everyone by rank.
+ */
+export const CALLSIGNS_READY = false;
 
 /** "602 | Ryan Callahan" → "Ryan Callahan" */
 export function baseName(m: GuildMember) {
@@ -168,7 +175,7 @@ export function baseName(m: GuildMember) {
 }
 
 export const nicknameFor = (callsign: number | null, name: string) =>
-  (callsign === null ? name : `${callsign} | ${name}`).slice(0, 32);
+  (callsign === null ? name : `${fmtCallsign(callsign)} | ${name}`).slice(0, 32);
 
 let cache: { at: number; members: GuildMember[]; roles: GuildRole[] } | null = null;
 
@@ -235,7 +242,7 @@ export async function buildRoster({ fresh = false } = {}) {
       nick: m.nick ?? null,
       rank,
       callsign: callsigns.get(m.user.id) ?? null,
-      nickCallsign: CALLSIGN_PREFIX.test(m.nick ?? "") ? Number(/\d{2,4}/.exec(m.nick!)![0]) : null,
+      nickCallsign: CALLSIGN_PREFIX.test(m.nick ?? "") ? Number(/\d{1,4}/.exec(m.nick!)![0]) : null,
     });
   }
   entries.sort(
@@ -288,11 +295,12 @@ function explain(err: unknown) {
 }
 
 /**
- * Makes everyone's callsign match their rank's block and sets nicknames to "630 | Name".
+ * Makes everyone's callsign match their rank's block and sets nicknames to "C-07 | Name".
  * reissue = true clears all callsigns first, so everyone is numbered fresh within their block.
  */
 export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> {
   if (!env.discord.botToken) throw new Error("DISCORD_BOT_TOKEN is not set.");
+  if (!CALLSIGNS_READY) throw new Error("Callsigns are paused until the FHP ranks and C-## numbers are set up.");
   await setMeta("roster_sync_running", Date.now());
   try {
     if (reissue) await query(`DELETE FROM roster_callsigns`);
@@ -371,6 +379,9 @@ export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> 
 export async function assignCallsignForMember(userId: string) {
   const [member, roles] = await Promise.all([fetchGuildMember(userId), fetchGuildRoles()]);
   const rank = memberRank(member.roles, rankRoleMap(roles));
+  if (!CALLSIGNS_READY) {
+    return { old: null, next: null, rank: rank ? rankInfo(rank).label : null, full: false, nickError: null, paused: true };
+  }
   const mine = await queryOne<{ callsign: number }>(`SELECT callsign FROM roster_callsigns WHERE user_id=$1`, [userId]);
   const old = mine ? Number(mine.callsign) : null;
 
@@ -394,7 +405,7 @@ export async function assignCallsignForMember(userId: string) {
     await setNickname(userId, desired).catch((e) => (nickError = explain(e)));
   }
   cache = null;
-  return { old, next, rank: rank ? rankInfo(rank).label : null, full: !!rank && next === null, nickError };
+  return { old, next, rank: rank ? rankInfo(rank).label : null, full: !!rank && next === null, nickError, paused: false };
 }
 
 export async function releaseCallsign(userId: string) {
@@ -404,7 +415,7 @@ export async function releaseCallsign(userId: string) {
 
 /** Runs a normal sync if the last one was more than 10 minutes ago (called when the roster is viewed). */
 export async function syncIfStale() {
-  if (!env.discord.botToken) return;
+  if (!env.discord.botToken || !CALLSIGNS_READY) return;
   const running = await getMeta<number>("roster_sync_running");
   if (running && Date.now() - running < 5 * 60_000) return;
   const last = await getLastSync();

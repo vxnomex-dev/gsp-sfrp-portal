@@ -1,3 +1,4 @@
+import { fmtCallsign } from "./callsign";
 import "server-only";
 import { query, queryOne } from "./db";
 import { site } from "./site";
@@ -95,7 +96,7 @@ function promotionMessage(p: {
       text(
         `**Previous Rank:** ${clean(p.oldRank, 60)}\n` +
           `**New Rank:** ${clean(p.newRank, 60)}\n` +
-          `**Callsign:** ${p.callsign !== null ? p.callsign : "Unassigned"}\n` +
+          `**Callsign:** ${p.callsign !== null ? fmtCallsign(p.callsign) : "Unassigned"}\n` +
           `**Reason:** ${clean(p.reason, 800)}`,
       ),
       text(
@@ -136,8 +137,9 @@ export async function runPromotion(opts: {
     }
 
     // Callsign: lowest free number in the new rank's block, then update the nickname
-    const { old: oldCallsign, next: newCallsign, rank: rankLabel, full, nickError } = await assignCallsignForMember(userId);
-    if (full) problems.push(`All ${rankLabel} callsigns are taken, so they have no callsign until a spot opens.`);
+    const { old: oldCallsign, next: newCallsign, rank: rankLabel, full, nickError, paused } = await assignCallsignForMember(userId);
+    if (paused) problems.push("Callsigns are paused until the FHP ranks are set up, so no callsign was given.");
+    else if (full) problems.push(`All ${rankLabel} callsigns are taken, so they have no callsign until a spot opens.`);
     else if (!rankLabel) problems.push("Their new role isn't recognised as a rank, so no callsign was given.");
     if (nickError) problems.push(`Nickname not updated: ${nickError}`);
     invalidateRosterCache();
@@ -170,7 +172,7 @@ export async function runPromotion(opts: {
     await editInteractionResponse(token, {
       content:
         `Promoted <@${userId}> to <@&${newRoleId}>` +
-        (newCallsign !== null ? ` — callsign \`${newCallsign}\`${oldCallsign !== null && oldCallsign !== newCallsign ? ` (was \`${oldCallsign}\`)` : ""}` : "") +
+        (newCallsign !== null ? ` — callsign \`${fmtCallsign(newCallsign)}\`${oldCallsign !== null && oldCallsign !== newCallsign ? ` (was \`${fmtCallsign(oldCallsign)}\`)` : ""}` : "") +
         `. Posted in <#${msg.channel_id}>.` +
         (problems.length ? `\n${problems.join("\n")}` : ""),
     });

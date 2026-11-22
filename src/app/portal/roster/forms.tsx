@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtCallsign } from "@/lib/callsign";
 import { useActionState } from "react";
 import { rosterSync, saveAssignments } from "@/app/actions";
 import type { FormState } from "@/lib/forms";
@@ -13,7 +14,7 @@ export function SyncForms() {
         <input type="hidden" name="mode" value="sync" />
         <p className="text-muted-foreground">
           Gives anyone whose callsign doesn&apos;t match their rank the lowest free number in their rank&apos;s block, releases
-          callsigns of people who left, and fixes nicknames to <code>630 | Name</code>.
+          callsigns of people who left, and fixes nicknames to <code>C-07 | Name</code>.
         </p>
         <SubmitButton className="btn btn-navy" pendingText="Syncing… this can take a minute">Sync now</SubmitButton>
       </form>
@@ -74,7 +75,7 @@ export function AssignmentsForm({
                 <tr key={r.callsign} className="border-b border-border last:border-0">
                   <td className="py-2 pr-4">
                     <span className="inline-block min-w-12 rounded-sm bg-navy px-2 py-0.5 text-center font-display tracking-wider text-white">
-                      {r.callsign}
+                      {fmtCallsign(r.callsign)}
                     </span>
                   </td>
                   <td className="py-2 pr-4 font-semibold text-navy-ink">{r.rank}</td>

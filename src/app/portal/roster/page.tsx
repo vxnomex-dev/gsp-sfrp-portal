@@ -1,8 +1,9 @@
+import { fmtCallsignRange } from "@/lib/callsign";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
 import { guard } from "../guard";
-import { RANKS, SLOT_RANKS, buildRoster, getAssignments, getLastSync, type RosterEntry } from "@/lib/roster";
+import { CALLSIGNS_READY, RANKS, SLOT_RANKS, buildRoster, getAssignments, getLastSync, type RosterEntry } from "@/lib/roster";
 import { fmtDate } from "@/lib/format";
 import { AssignmentsForm, SyncForms } from "./forms";
 
@@ -50,6 +51,13 @@ async function RosterSettings() {
       {error && (
         <div className="border-l-4 border-destructive bg-card px-5 py-4 text-sm">
           Couldn&apos;t read the server: {error}. Make sure the bot token is set and <strong>Server Members Intent</strong> is on.
+        </div>
+      )}
+
+      {!CALLSIGNS_READY && (
+        <div className="border-l-4 border-gold bg-panel px-5 py-4 text-sm">
+          <strong>Callsigns are paused.</strong> Nobody is numbered or renamed until the FHP rank ladder and its C-##
+          numbers are set up. The roster still lists everyone by rank.
         </div>
       )}
 
@@ -107,7 +115,7 @@ async function RosterSettings() {
           ranks={RANKS.filter((r) => !SLOT_RANKS.some((x) => x.key === r.key)).map((r) => ({
             key: r.key,
             label: r.label,
-            callsigns: `${r.block[0]}–${r.block[1]}`,
+            callsigns: fmtCallsignRange(r.block[0], r.block[1]),
           }))}
           values={assignments as { slots: Record<string, string>; ranks: Record<string, string> }}
         />
@@ -134,7 +142,7 @@ async function RosterSettings() {
               {RANKS.map((r) => (
                 <tr key={r.key} className="border-b border-border last:border-0">
                   <td className="py-2 pr-4 font-semibold text-navy-ink">{r.label}</td>
-                  <td className="py-2 pr-4">{r.block[0] === r.block[1] ? r.block[0] : `${r.block[0]}–${r.block[1]}`}</td>
+                  <td className="py-2 pr-4">{fmtCallsignRange(r.block[0], r.block[1])}</td>
                   <td className="py-2 pr-4">{r.block[1] - r.block[0] + 1}</td>
                   <td className="py-2 pr-4">{counts.get(r.key) ?? 0}</td>
                   <td className="py-2">

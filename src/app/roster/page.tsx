@@ -1,3 +1,4 @@
+import { fmtCallsign } from "@/lib/callsign";
 import { Suspense } from "react";
 import { after, connection } from "next/server";
 import type { Metadata } from "next";
@@ -106,7 +107,7 @@ async function Roster() {
                             row.entry ? "bg-navy text-white" : "border border-dashed border-border text-muted-foreground"
                           }`}
                         >
-                          {row.callsign ?? "—"}
+                          {row.callsign !== null ? fmtCallsign(row.callsign) : "—"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
