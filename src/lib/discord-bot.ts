@@ -21,7 +21,11 @@ async function bot<T>(path: string, init: { method?: string; body?: unknown } = 
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(`${API}${path}`, {
       method: init.method ?? "GET",
-      headers: { Authorization: `Bot ${env.discord.botToken}`, "Content-Type": "application/json" },
+      // Only say "JSON" when there is a body — Discord rejects an empty body labelled as JSON on some endpoints
+      headers: {
+        Authorization: `Bot ${env.discord.botToken}`,
+        ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store",
     });
