@@ -1,3 +1,4 @@
+import { getConfig } from "@/lib/config";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/SiteChrome";
@@ -16,7 +17,7 @@ export default function ApplyPage() {
   return (
     <>
       <PageHeader eyebrow="Recruitment" title="Cadet Application" image={site.images.headers.apply}>
-        Reviewed by Georgia State Patrol command staff. Answer every question honestly and in full sentences — low-effort
+        Reviewed by Florida Highway Patrol command staff. Answer every question honestly and in full sentences — low-effort
         applications are denied.
       </PageHeader>
       <section className="py-14">
@@ -48,7 +49,7 @@ async function ApplyGate() {
     );
   }
 
-  const botReady = Boolean(env.discord.botToken && env.discord.guildId);
+  const botReady = Boolean(env.discord.botToken && (await getConfig()).guildId);
   if (botReady && !viewer.inGuild) {
     return (
       <div className="card card-gold p-8 text-center">

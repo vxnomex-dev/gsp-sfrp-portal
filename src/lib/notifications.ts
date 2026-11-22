@@ -6,6 +6,7 @@ import { clean, container, divider, text, unix, type Component } from "./compone
 import { sendDirectMessageV2 } from "./discord-bot";
 import { fetchMemberRoles } from "./discord";
 import { resolveAccess, type Permission } from "./permissions";
+import { getConfig } from "./config";
 
 /* ------------------------------------------------------------------ */
 /* Kinds                                                               */
@@ -27,7 +28,7 @@ export const NOTIFICATION_KINDS = {
     permission: "press" as Permission,
     pref: "dm_press",
     personnelOnly: false,
-    issuer: "the GSP Press Release Team",
+    issuer: "the FHP Press Release Team",
     blurb: "Updates for the public about calls and incidents the Patrol has handled.",
   },
   info: {
@@ -36,7 +37,7 @@ export const NOTIFICATION_KINDS = {
     permission: "notices" as Permission,
     pref: "dm_info",
     personnelOnly: true,
-    issuer: "GSP High Command",
+    issuer: "FHP High Command",
     blurb: "Important information for department personnel. Only members of the Patrol can see these.",
   },
 } as const;
@@ -170,12 +171,13 @@ export async function sendNotificationDMs(n: Notification) {
   let sent = 0;
   let failed = 0;
   const components = notificationDM(n);
+  const cfg = await getConfig();
   for (const { user_id } of users) {
     try {
       // Important info stays inside the department: re-check they're still personnel
       if (meta.personnelOnly) {
         const roles = await fetchMemberRoles(user_id);
-        if (!roles || !resolveAccess(roles).permissions.includes("portal")) continue;
+        if (!roles || !resolveAccess(roles, cfg).permissions.includes("portal")) continue;
       }
       if (await sendDirectMessageV2(user_id, components)) sent++;
       else failed++;

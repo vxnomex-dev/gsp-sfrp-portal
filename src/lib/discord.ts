@@ -1,7 +1,10 @@
 import "server-only";
 import { env } from "./env";
+import { getConfig } from "./config";
 
 const API = "https://discord.com/api/v10";
+// Bot lookups can be pointed at a mock server for local testing.
+const BOT_API = process.env.DISCORD_API_BASE || API;
 
 export type DiscordUser = {
   id: string;
@@ -56,7 +59,7 @@ export async function fetchUser(accessToken: string): Promise<DiscordUser> {
 }
 
 /**
- * Looks up a member's roles in the South Fulton Roleplay server using the BOT token.
+ * Looks up a member's roles in the department's Discord server (Portal → Discord Setup) using the BOT token.
  * Returns null if the user is not in the server, or undefined if the bot isn't configured.
  * Results are cached for 60 seconds so role changes in Discord show up on the site within a minute.
  */
@@ -67,11 +70,13 @@ export async function fetchMemberRoles(
   { fresh = false } = {},
 ): Promise<string[] | null | undefined> {
   // undefined = bot not configured, null = not in the server
-  if (!env.discord.botToken || !env.discord.guildId) return undefined;
-  const cached = memberCache.get(userId);
+  const guild = (await getConfig()).guildId;
+  if (!env.discord.botToken || !guild) return undefined;
+  const key = `${guild}:${userId}`;
+  const cached = memberCache.get(key);
   if (!fresh && cached && Date.now() - cached.at < 60_000) return cached.roles;
 
-  const res = await fetch(`${API}/guilds/${env.discord.guildId}/members/${userId}`, {
+  const res = await fetch(`${BOT_API}/guilds/${guild}/members/${userId}`, {
     headers: { Authorization: `Bot ${env.discord.botToken}` },
     cache: "no-store",
   });
@@ -83,6 +88,6 @@ export async function fetchMemberRoles(
     throw new Error(`Discord member lookup failed (${res.status})`);
   } else roles = ((await res.json()) as { roles: string[] }).roles;
 
-  memberCache.set(userId, { at: Date.now(), roles });
+  memberCache.set(key, { at: Date.now(), roles });
   return roles;
 }

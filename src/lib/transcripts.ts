@@ -1,6 +1,7 @@
 import "server-only";
 import { env } from "./env";
 import { avatarUrl } from "./discord";
+import { FOOTER_BANNER } from "./components";
 import type { DiscordMessage } from "./discord-bot";
 
 /** Builds a self-contained HTML transcript of a ticket channel that looks like Discord. */
@@ -33,15 +34,8 @@ function format(raw: string, names: Map<string, string>): string {
   return s.replace(/\n/g, "<br>").replace(/<\/div><br>/g, "</div>").replace(/<pre>([\s\S]*?)<\/pre>/g, (m) => m.replace(/<br>/g, "\n"));
 }
 
-const ROLE_NAMES: Record<string, string> = {
-  "1558194099327074422": "Office of the Colonel",
-  "1558194099327074418": "High Command",
-  "1558194099297853566": "Command",
-  "1558194099268358282": "Supervisor",
-  "1558194099268358274": "Patrol",
-  "1558194099197059241": "Department Personnel",
-  "1558194098995732496": "Human Resources",
-};
+/** Role names for @role mentions — filled in from the server when a transcript is built. */
+let ROLE_NAMES: Record<string, string> = {};
 
 /** Pulls the readable text out of Components V2 / embeds so bot messages show up in the transcript. */
 function componentText(components: Record<string, unknown>[] | undefined): string[] {
@@ -71,7 +65,8 @@ export type TranscriptMeta = {
   closedAt: Date;
 };
 
-export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[]): string {
+export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[], roleNames: Record<string, string> = {}): string {
+  ROLE_NAMES = roleNames;
   const names = new Map<string, string>();
   for (const m of messages) names.set(m.author.id, m.author.global_name || m.author.username);
   names.set(meta.openerId, meta.openerName);
@@ -152,13 +147,13 @@ export function buildTranscript(meta: TranscriptMeta, messages: DiscordMessage[]
   .att{max-width:400px;max-height:300px;border-radius:6px;margin-top:4px;display:block}.file{display:inline-block;margin-top:4px}
   .muted{color:#949ba4;font-style:italic}.foot{color:#949ba4;font-size:12px;text-align:center;margin-top:12px}
 </style></head><body><div class="wrap">
-<img class="banner" src="${esc(env.baseUrl)}/images/gsp-banner-3.jpg" alt="Georgia State Patrol">
+<img class="banner" src="${esc(env.baseUrl)}/images/fhp-banner.jpg" alt="Florida Highway Patrol">
 <h1>${esc(meta.kindLabel)} — Ticket #${meta.ticketId}</h1>
-<p class="lead">Georgia State Patrol • South Fulton Roleplay • Transcript</p>
+<p class="lead">Florida Highway Patrol • Florida State Roleplay • Transcript</p>
 <div class="info">${info.map(([k, v]) => `<div><span>${k}</span>${esc(v)}</div>`).join("")}</div>
 <div class="inq"><b>What's up?</b>${esc(meta.inquiry)}</div>
-${rows || '<p class="muted">No messages.</p>'}
-<img class="banner footer" src="${esc(env.baseUrl)}/images/gsp-footer-3.jpg" alt="Georgia State Patrol">
-<div class="foot">Generated ${esc(fmtTime(meta.closedAt))} • Georgia State Patrol</div>
+${rows || '<p class="muted">No messages.</p>'}${FOOTER_BANNER ? `
+<img class="banner footer" src="${esc(env.baseUrl)}${FOOTER_BANNER}" alt="Florida Highway Patrol">` : ""}
+<div class="foot">Generated ${esc(fmtTime(meta.closedAt))} • Florida Highway Patrol</div>
 </div></body></html>`;
 }

@@ -60,11 +60,11 @@ async function Dashboard() {
       title: "Roster & Callsigns",
       body: "Sync callsigns and nicknames, choose rank roles.",
     },
-    viewer.can("content") && {
+    viewer.can("setup") && {
       href: "/portal/discord",
       icon: Bot,
-      title: "Discord Bot",
-      body: "Set up support tickets and slash commands.",
+      title: "Discord Setup",
+      body: "Choose the server, roles and channels the bot uses.",
     },
   ].filter(Boolean) as {
     href: string;
@@ -116,7 +116,7 @@ async function Dashboard() {
         </div>
       ) : (
         <div className="border-l-4 border-gold bg-panel px-6 py-5 text-muted-foreground">
-          You&apos;re logged in as a Georgia State Patrol employee. Staff tools will appear here if you hold a command
+          You&apos;re logged in as a Florida Highway Patrol employee. Staff tools will appear here if you hold a command
           staff, application reviewer or Human Resources role.
         </div>
       )}

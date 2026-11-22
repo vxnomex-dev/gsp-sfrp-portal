@@ -31,7 +31,7 @@ export const SOP: SopSection[] = [
             num: "1.01",
             title: "General Vehicle Operation and Safety Standards",
             body: [
-              "All sworn troopers operating Georgia State Patrol vehicles shall exercise due regard for the safety of all persons and property at all times. Agency vehicles must be operated in full compliance with Georgia State law and local ordinances unless specific emergency exemptions apply under Georgia law. Troopers are personally responsible for the safe and prudent operation of their assigned vehicle. Operational courteousness, defensive driving tactics, and continuous situational awareness are required during both emergency and non-emergency operations.",
+              "All sworn troopers operating Florida Highway Patrol vehicles shall exercise due regard for the safety of all persons and property at all times. Agency vehicles must be operated in full compliance with Florida State law and local ordinances unless specific emergency exemptions apply under Florida law. Troopers are personally responsible for the safe and prudent operation of their assigned vehicle. Operational courteousness, defensive driving tactics, and continuous situational awareness are required during both emergency and non-emergency operations.",
             ],
           },
           {
@@ -94,7 +94,7 @@ export const SOP: SopSection[] = [
             num: "1.10",
             title: "Vehicle Accidents, Collision Reporting, and Administrative Review Board",
             body: [
-              "Any motor vehicle collision involving an agency vehicle — regardless of damage severity or injury status — must be reported immediately to Communications and an on-duty supervisor. An independent traffic crash investigation must be conducted by an outside agency or specialized traffic crash reconstruction unit. All agency vehicle crashes undergo formal administrative evaluation by the GSP Vehicle Accident Review Board to determine preventable versus non-preventable classification and appropriate remedial training or disciplinary action.",
+              "Any motor vehicle collision involving an agency vehicle — regardless of damage severity or injury status — must be reported immediately to Communications and an on-duty supervisor. An independent traffic crash investigation must be conducted by an outside agency or specialized traffic crash reconstruction unit. All agency vehicle crashes undergo formal administrative evaluation by the FHP Vehicle Accident Review Board to determine preventable versus non-preventable classification and appropriate remedial training or disciplinary action.",
             ],
           },
           {
@@ -127,7 +127,7 @@ export const SOP: SopSection[] = [
             num: "1.10",
             title: "Core Philosophy and Definition of Lethal / Deadly Force",
             body: [
-              "Lethal force (deadly force) is defined as force that is intended or likely to cause death or serious bodily harm. The Georgia State Patrol holds the sanctity of human life as a core administrative value. Lethal force represents the ultimate level of physical force and must be utilized only when objectively reasonable under the totality of circumstances, as evaluated from the perspective of a reasonable trooper on the scene at the moment force is applied.",
+              "Lethal force (deadly force) is defined as force that is intended or likely to cause death or serious bodily harm. The Florida Highway Patrol holds the sanctity of human life as a core administrative value. Lethal force represents the ultimate level of physical force and must be utilized only when objectively reasonable under the totality of circumstances, as evaluated from the perspective of a reasonable trooper on the scene at the moment force is applied.",
             ],
           },
           {
@@ -190,7 +190,7 @@ export const SOP: SopSection[] = [
             num: "1.19",
             title: "Internal Investigations, Shooting Review Board, and External Inquiry",
             body: [
-              "All deadly force incidents are subjected to a rigorous, multi-layered investigation conducted by Human Resources, the State Attorney's Office, and the GSP Use of Force Shooting Review Board to assess compliance with state laws and agency operational policies.",
+              "All deadly force incidents are subjected to a rigorous, multi-layered investigation conducted by Human Resources, the State Attorney's Office, and the FHP Use of Force Shooting Review Board to assess compliance with state laws and agency operational policies.",
             ],
           },
           {
@@ -457,7 +457,7 @@ export const SOP: SopSection[] = [
             num: "4.04",
             title: "Inter-Jurisdictional Pursuits, Air Support Coordination, and Radio Communications",
             body: [
-              "When a pursuit enters or approaches adjacent municipal or county jurisdictions, Dispatch shall immediately notify the neighboring law enforcement agencies. Agency units shall not enter another jurisdiction unless authorized by the GSP supervisor. Once the GSP Aviation Unit (Air One) visualizes and assumes tracking of the fleeing vehicle, ground pursuit units shall immediately fall back and deactivate Code 3 warning equipment to diminish the suspect's aggressive driving risk.",
+              "When a pursuit enters or approaches adjacent municipal or county jurisdictions, Dispatch shall immediately notify the neighboring law enforcement agencies. Agency units shall not enter another jurisdiction unless authorized by the FHP supervisor. Once the FHP Aviation Unit (Air One) visualizes and assumes tracking of the fleeing vehicle, ground pursuit units shall immediately fall back and deactivate Code 3 warning equipment to diminish the suspect's aggressive driving risk.",
             ],
           },
           {

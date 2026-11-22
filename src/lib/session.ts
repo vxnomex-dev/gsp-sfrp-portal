@@ -3,7 +3,9 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { env } from "./env";
 import { fetchMemberRoles } from "./discord";
-import { resolveAccess, type Permission } from "./permissions";
+import { ALL_PERMISSIONS, resolveAccess, type Permission } from "./permissions";
+import { getConfig } from "./config";
+import { setupAccess } from "./admins";
 
 export const SESSION_COOKIE = "gsp_session";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -68,10 +70,10 @@ function devAccess(as: string): { permissions: Permission[]; labels: string[] } 
     public: { permissions: [], labels: [] },
     employee: { permissions: ["portal"], labels: ["Department Personnel"] },
     command: { permissions: ["portal", "applications", "content", "notices"], labels: ["High Command"] },
-    ootc: { permissions: ["portal", "applications", "content", "reports", "alerts", "press", "notices"], labels: ["Office of the Colonel"] },
+    ootc: { permissions: ALL_PERMISSIONS, labels: ["Office of the Colonel"] },
     press: { permissions: ["press"], labels: ["Press Release Team"] },
     psb: { permissions: ["portal", "reports"], labels: ["Human Resources"] },
-    all: { permissions: ["portal", "applications", "content", "reports", "alerts", "press", "notices"], labels: ["High Command", "Human Resources"] },
+    all: { permissions: ALL_PERMISSIONS, labels: ["High Command", "Human Resources"] },
   };
   return map[as] ?? map.public;
 }
@@ -96,7 +98,16 @@ export async function getViewer(): Promise<Viewer | null> {
       /* keep login-time roles */
     }
   }
-  const { permissions, labels } = s.dev && env.devLogin ? devAccess(s.dev) : resolveAccess(roles);
+  let access = s.dev && env.devLogin ? devAccess(s.dev) : resolveAccess(roles, await getConfig());
+  if (!s.dev) {
+    // The bot's owner always has full access (so a new server can be set up); server admins can open Discord Setup.
+    const extra = await setupAccess(s.uid, roles);
+    if (extra === "owner") access = { permissions: ALL_PERMISSIONS, labels: ["Bot Owner", ...access.labels] };
+    else if (extra === "admin" && !access.permissions.includes("setup")) {
+      access = { permissions: [...new Set([...access.permissions, "portal" as const, "setup" as const])], labels: [...access.labels, "Server Admin"] };
+    }
+  }
+  const { permissions, labels } = access;
   return {
     ...s,
     roles,

@@ -100,7 +100,7 @@ export function ProfileForm({ initial, personnel }: { initial: Prefs; personnel:
         <div className="border-b border-border px-6 py-5">
           <h2 className="text-2xl font-semibold uppercase text-navy-ink">Discord DMs</h2>
           <p className="mt-1 text-muted-foreground">
-            Pick what the Georgia State Patrol bot sends you. Everything is also in the notification center (the bell at the
+            Pick what the Florida Highway Patrol bot sends you. Everything is also in the notification center (the bell at the
             top of every page).
           </p>
         </div>
@@ -122,12 +122,12 @@ export function ProfileForm({ initial, personnel }: { initial: Prefs; personnel:
           </Toggle>
           {personnel && (
             <Toggle name="dm_info" checked={p.dm_info} onChange={(v) => set("dm_info", v)} icon={Info} title="Important Info">
-              Department-only information from High Command. Only GSP personnel receive these.
+              Department-only information from High Command. Only FHP personnel receive these.
             </Toggle>
           )}
         </div>
         <p className="border-t border-border bg-panel px-6 py-3 text-xs text-muted-foreground">
-          To get DMs, stay in the South Fulton Roleplay Discord and keep &ldquo;Direct Messages&rdquo; allowed in that
+          To get DMs, stay in the Florida State Roleplay Discord and keep &ldquo;Direct Messages&rdquo; allowed in that
           server&apos;s privacy settings.
         </p>
       </div>

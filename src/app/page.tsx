@@ -115,19 +115,19 @@ export default function HomePage() {
           <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-navy-deep shadow-lg">
             {site.images.mission ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={site.images.mission} alt="Georgia State Patrol troopers on duty" className="h-full w-full object-cover" />
+              <img src={site.images.mission} alt="Florida Highway Patrol troopers on duty" className="h-full w-full object-cover" />
             ) : (
               <div className="hero-pattern flex h-full w-full flex-col items-center justify-center gap-4 text-white/80">
                 <Logo size={120} />
-                <span className="font-display text-sm uppercase tracking-[0.2em]">Department photo coming soon</span>
+                <span className="font-display text-sm uppercase tracking-[0.2em]">Courtesy · Service · Protection</span>
               </div>
             )}
           </div>
           <div>
             <div className="eyebrow mb-3">Our Mission</div>
-            <h2 className="text-4xl font-semibold uppercase text-navy-ink">Courtesy. Professionalism. Integrity.</h2>
+            <h2 className="text-4xl font-semibold uppercase text-navy-ink">Courtesy. Service. Protection.</h2>
             <p className="mt-5 text-lg text-muted-foreground">
-              The Georgia State Patrol is the primary state law enforcement agency of {site.community}. Troopers hold the
+              The Florida Highway Patrol is the primary state law enforcement agency of {site.community}. Troopers hold the
               line on the highways, assist local agencies, and represent the department to the public with discipline
               and respect.
             </p>

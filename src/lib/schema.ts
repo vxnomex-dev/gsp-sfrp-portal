@@ -159,7 +159,7 @@ const COMMAND_STAFF = [
     name: "Tim Bradford",
     rank: "Colonel",
     title: "Commanding Officer",
-    bio: "The Colonel holds final authority over the Georgia State Patrol — setting department policy, approving promotions and representing the Patrol to the wider South Fulton Roleplay community.",
+    bio: "The Colonel holds final authority over the Florida Highway Patrol — setting department policy, approving promotions and representing the Patrol to the wider Florida State Roleplay community.",
   },
   {
     name: "Ryan Callahan",
@@ -181,7 +181,7 @@ const DIVISIONS = [
     name: "Nighthawks",
     abbreviation: "NH",
     summary:
-      "The Patrol's dedicated DUI task force, working the late hours to take impaired and dangerous drivers off Georgia's roads.",
+      "The Patrol's dedicated DUI task force, working the late hours to take impaired and dangerous drivers off Florida's roads.",
     duties:
       "Impaired-driving enforcement\nSobriety checkpoints and saturation patrols\nNighttime high-visibility enforcement\nSupport to troopers on DUI investigations",
     restricted: false,
@@ -248,4 +248,33 @@ export async function seedDefaults(client: Client) {
     );
   }
   await client.query(`INSERT INTO meta (key, value) VALUES ('seeded_v1', 'true') ON CONFLICT DO NOTHING`);
+}
+
+/**
+ * One-time fresh start for the move from the Georgia State Patrol (South Fulton Roleplay) to the
+ * Florida Highway Patrol (Florida State Roleplay): clears every record from the old server.
+ * Command staff and division pages are kept (edit them in the portal).
+ */
+export async function fhpReset(client: Client) {
+  const claimed = await client.query(
+    `INSERT INTO meta (key, value) VALUES ('reset_fhp_v1', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+  );
+  if (!claimed.length) return; // already done (or another server instance is doing it)
+  await client.query(
+    `TRUNCATE applications, reports, infractions, promotions, tickets, notifications, roster_callsigns, user_prefs RESTART IDENTITY`,
+  );
+  await client.query(
+    `DELETE FROM meta WHERE key IN ('roster_assignments', 'roster_last_sync', 'roster_sync_running', 'discord_config')`,
+  );
+  // Rename the agency in page text that's already in the database
+  for (const [table, cols] of [
+    ["command_staff", ["title", "bio"]],
+    ["divisions", ["summary", "duties"]],
+  ] as const) {
+    for (const col of cols) {
+      await client.query(
+        `UPDATE ${table} SET ${col} = replace(replace(replace(replace(${col}, 'Georgia State Patrol', 'Florida Highway Patrol'), 'South Fulton Roleplay', 'Florida State Roleplay'), 'Georgia''s roads', 'Florida''s roads'), 'GSP', 'FHP')`,
+      );
+    }
+  }
 }

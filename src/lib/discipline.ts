@@ -17,30 +17,28 @@ import {
 } from "./discord-bot";
 import { assignCallsignForMember, baseName, invalidateRosterCache, releaseCallsign } from "./roster";
 import type { Member } from "./tickets";
+import { getConfig, rolesFor } from "./config";
 
 /* ------------------------------------------------------------------ */
 /* Configuration                                                       */
 /* ------------------------------------------------------------------ */
 
-export const DISCIPLINE = {
-  /** Channel for promotion announcements. Empty = the channel the command was used in. */
-  promotionsChannelId: "1558194101831209031",
-  /** Channel for infraction notices. Empty = the channel the command was used in. */
-  infractionsChannelId: "1558194101831209032",
-  /** Roles that may use /promote. */
-  promoteRoles: [
-    "1558194099327074422", // Office of the Colonel
-    "1558194099327074418", // High Command
-    "1558194099297853566", // Command
-  ],
-  /** Roles that may use /infraction issue and /infraction void. */
-  infractRoles: [
-    "1558194098995732496", // Human Resources
-    "1558194099327074422", // Office of the Colonel
-  ],
-  /** Kept on termination (matched by ID, or by a role named "Community Member" if this is empty). */
-  communityMemberRoleIds: ["1558194098890874976"] as string[],
-};
+/**
+ * Channels and roles come from Portal → Discord Setup:
+ *  - /promote: Office of the Colonel, High Command, Command
+ *  - /infraction: Human Resources, Office of the Colonel
+ *  - Termination keeps only the Community Member role.
+ */
+async function disciplineConfig() {
+  const cfg = await getConfig();
+  return {
+    promotionsChannelId: cfg.channels.promotions,
+    infractionsChannelId: cfg.channels.infractions,
+    promoteRoles: rolesFor(cfg, "ootc", "highCommand", "command"),
+    infractRoles: rolesFor(cfg, "hr", "ootc"),
+    communityMemberRoleIds: rolesFor(cfg, "communityMember"),
+  };
+}
 
 export const INFRACTION_TYPES = {
   termination: "Termination",
@@ -55,8 +53,8 @@ export type InfractionKind = keyof typeof INFRACTION_TYPES;
 export const SUSPENSION_MODAL_PREFIX = "gsp_inf_susp:";
 
 const hasAny = (m: Member, ids: string[]) => m.roles.some((r) => ids.includes(r));
-export const canPromote = (m: Member) => hasAny(m, DISCIPLINE.promoteRoles);
-export const canInfract = (m: Member) => hasAny(m, DISCIPLINE.infractRoles);
+export const canPromote = async (m: Member) => hasAny(m, (await disciplineConfig()).promoteRoles);
+export const canInfract = async (m: Member) => hasAny(m, (await disciplineConfig()).infractRoles);
 
 const displayName = (m: Member) => m.nick || m.user.global_name || m.user.username;
 const caseRef = (id: number) => `Case #${id}`;
@@ -77,7 +75,7 @@ function explain(e: unknown) {
 function roleLabel(roleId: string, names: Map<string, string>) {
   const n = names.get(roleId);
   if (!n) return `<@&${roleId}>`;
-  return n.normalize("NFKC").replace(/^\s*GSP\s*[|│¦:\-–—]\s*/i, "").trim() || n;
+  return n.normalize("NFKC").replace(/^\s*(?:FHP|GSP)\s*[|│¦:\-–—]\s*/i, "").trim() || n;
 }
 
 function promotionMessage(p: {
@@ -101,7 +99,7 @@ function promotionMessage(p: {
           `**Reason:** ${clean(p.reason, 800)}`,
       ),
       text(
-        `-# Congratulations, and thank you for your continued service to the Georgia State Patrol.\n` +
+        `-# Congratulations, and thank you for your continued service to the Florida Highway Patrol.\n` +
           `-# ID: ${p.id} | Promoted by: <@${p.issuerId}>`,
       ),
       divider(),
@@ -153,7 +151,7 @@ export async function runPromotion(opts: {
     const names = new Map((await fetchGuildRoles().catch(() => [])).map((r) => [r.id, r.name]));
 
     // Announcement
-    const channelId = DISCIPLINE.promotionsChannelId || opts.commandChannelId;
+    const channelId = (await disciplineConfig()).promotionsChannelId || opts.commandChannelId;
     const msg = await postChannelMessage(channelId, {
       components: promotionMessage({
         id: rec.id,
@@ -215,7 +213,7 @@ function infractionSentence(inf: Infraction, subject: string) {
   const t = unix(new Date(inf.created_at));
   const verb =
     inf.kind === "termination"
-      ? `${subject === "You" ? "have" : "has"} been **terminated** from the Georgia State Patrol by **Human Resources**`
+      ? `${subject === "You" ? "have" : "has"} been **terminated** from the Florida Highway Patrol by **Human Resources**`
       : `${subject === "You" ? "have" : "has"} received ${article(type)} **${type}** from **Human Resources**`;
   const forWhat = inf.policy ? ` for **${clean(inf.policy, 100)}**` : "";
   return `> ${subject} ${verb}${forWhat} on <t:${t}:D> at <t:${t}:t>.`;
@@ -272,11 +270,11 @@ function infractionDM(inf: Infraction): Component[] {
 
 /** Strips every role except Community Member (and roles Discord manages itself). Returns the removed role IDs. */
 async function stripRoles(userId: string, problems: string[]) {
-  const [member, roles] = await Promise.all([fetchGuildMember(userId), fetchGuildRoles()]);
+  const [member, roles, dc] = await Promise.all([fetchGuildMember(userId), fetchGuildRoles(), disciplineConfig()]);
   const byId = new Map(roles.map((r) => [r.id, r]));
   const keep = new Set(
-    DISCIPLINE.communityMemberRoleIds.length
-      ? DISCIPLINE.communityMemberRoleIds
+    dc.communityMemberRoleIds.length
+      ? dc.communityMemberRoleIds
       : roles.filter((r) => /community\s*member/i.test(r.name)).map((r) => r.id),
   );
   if (!keep.size) problems.push("No \"Community Member\" role found — every removable role was taken off.");
@@ -369,7 +367,7 @@ export async function runInfraction(opts: {
     const inf = row!;
 
     // Post the notice and open the evidence thread
-    const channelId = DISCIPLINE.infractionsChannelId || opts.commandChannelId;
+    const channelId = (await disciplineConfig()).infractionsChannelId || opts.commandChannelId;
     const msg = await postChannelMessage(channelId, {
       components: infractionMessage(inf),
       allowed_mentions: { parse: [], users: [userId] },
@@ -467,7 +465,7 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
       container([
         text(`> Your **${INFRACTION_TYPES[inf.kind]}** (ID: ${inf.id}) has been **voided** and removed from your record.`),
         ...(opts.reason ? [text(`**Reason:** ${clean(opts.reason, 400)}`)] : []),
-        text(`-# Georgia State Patrol — ${clean(site.community, 60)}`),
+        text(`-# Florida Highway Patrol — ${clean(site.community, 60)}`),
         divider(),
       ]),
     ]);

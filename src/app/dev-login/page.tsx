@@ -22,7 +22,7 @@ async function Picker({ searchParams }: { searchParams: PageProps<"/dev-login">[
   const sp = await searchParams;
   const next = typeof sp.next === "string" ? sp.next : "/portal";
   const options = [
-    ["public", "Member of the public (no GSP roles)"],
+    ["public", "Member of the public (no FHP roles)"],
     ["employee", "Trooper (employee role)"],
     ["command", "Command Staff"],
     ["psb", "Human Resources"],

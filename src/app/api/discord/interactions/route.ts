@@ -5,7 +5,7 @@ import {
   DENY_PREFIX,
   DENY_MODAL_PREFIX,
   DENY_REASON_INPUT,
-  buildApplicationMessage,
+  applicationMessage,
   denyReasonModal,
   recordDecision,
 } from "@/lib/applications-discord";
@@ -37,6 +37,7 @@ import {
   type InfractionKind,
 } from "@/lib/discipline";
 import { resolveAccess } from "@/lib/permissions";
+import { getConfig } from "@/lib/config";
 import { appRef } from "@/lib/forms";
 
 /**
@@ -113,7 +114,7 @@ function decideLater(i: Interaction, id: number, status: "accepted" | "denied", 
       if (!result.ok) {
         if (result.reason === "already_decided" && result.app) {
           await editInteractionOriginal(i.token, {
-            components: buildApplicationMessage(result.app, { withButtons: true }).components,
+            components: (await applicationMessage(result.app, { withButtons: true })).components,
           }).catch(() => {});
           await ephemeralFollowup(
             i.token,
@@ -126,7 +127,7 @@ function decideLater(i: Interaction, id: number, status: "accepted" | "denied", 
       }
 
       await editInteractionOriginal(i.token, {
-        components: buildApplicationMessage(result.app, { withButtons: true }).components,
+        components: (await applicationMessage(result.app, { withButtons: true })).components,
       });
       if (result.dmSent === false) {
         await ephemeralFollowup(
@@ -142,7 +143,7 @@ function decideLater(i: Interaction, id: number, status: "accepted" | "denied", 
 }
 
 async function handleApplication(i: Interaction, cid: string) {
-  if (!resolveAccess(i.member!.roles).permissions.includes("applications")) {
+  if (!resolveAccess(i.member!.roles, await getConfig()).permissions.includes("applications")) {
     return ephemeral("You don't have permission to decide cadet applications.");
   }
   if (i.type === 3 && cid.startsWith(ACCEPT_PREFIX)) {
@@ -208,7 +209,7 @@ export async function POST(req: NextRequest) {
           return json(await postPanel(channelId));
 
         case "promote": {
-          if (!canPromote(i.member)) {
+          if (!(await canPromote(i.member))) {
             return ephemeral("You don't have permission to use `/promote`. Only Command, High Command and the Office of the Colonel can promote.");
           }
           const userId = option(i, "user")!;
@@ -224,7 +225,7 @@ export async function POST(req: NextRequest) {
         }
 
         case "infraction": {
-          if (!canInfract(i.member)) {
+          if (!(await canInfract(i.member))) {
             return ephemeral("You don't have permission to issue or void infractions. Only Human Resources and the Office of the Colonel can.");
           }
           const sub = subOptions(i)?.name;
@@ -263,7 +264,7 @@ export async function POST(req: NextRequest) {
 
     // Suspension details submitted → issue the infraction
     if (i.type === 5 && cid.startsWith(SUSPENSION_MODAL_PREFIX)) {
-      if (!canInfract(i.member)) return ephemeral("You don't have permission to issue infractions.");
+      if (!(await canInfract(i.member))) return ephemeral("You don't have permission to issue infractions.");
       const [userId, kind] = cid.slice(SUSPENSION_MODAL_PREFIX.length).split(":");
       const duration = modalValue(i, "duration").trim();
       const reason = modalValue(i, "reason").trim();

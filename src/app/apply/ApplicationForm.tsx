@@ -56,7 +56,7 @@ export function ApplicationForm({ discordName }: { discordName: string }) {
         name="agree"
         defaultChecked={v.agree === "on"}
         error={e.agree}
-        label="I confirm my answers are my own work, and I agree to follow the Georgia State Patrol's policies and the South Fulton Roleplay server rules."
+        label="I confirm my answers are my own work, and I agree to follow the Florida Highway Patrol's policies and the Florida State Roleplay server rules."
       />
 
       <div className="flex justify-end border-t border-border pt-6">

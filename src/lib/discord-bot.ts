@@ -2,6 +2,7 @@ import "server-only";
 import { createPublicKey, verify } from "node:crypto";
 import { env } from "./env";
 import { IS_COMPONENTS_V2, type Component } from "./components";
+import { getConfig, guildId } from "./config";
 
 // DISCORD_API_BASE is only for local testing against a mock server.
 const API = process.env.DISCORD_API_BASE || "https://discord.com/api/v10";
@@ -27,23 +28,9 @@ async function bot<T>(path: string, init: { method?: string; body?: unknown } = 
   return (res.status === 204 ? null : await res.json()) as T;
 }
 
-/**
- * The channel the applications webhook posts into. Read from the webhook itself, so no extra setting is
- * needed (APPLICATIONS_CHANNEL_ID overrides it).
- */
-let cachedAppChannel: string | null = null;
+/** The channel cadet applications are posted in (Portal → Discord Setup). */
 export async function getApplicationsChannelId(): Promise<string | null> {
-  if (env.applicationsChannelId) return env.applicationsChannelId;
-  if (cachedAppChannel) return cachedAppChannel;
-  if (!env.webhooks.applications) return null;
-  try {
-    const res = await fetch(env.webhooks.applications, { cache: "no-store" });
-    if (!res.ok) return null;
-    cachedAppChannel = ((await res.json()) as { channel_id: string }).channel_id;
-    return cachedAppChannel;
-  } catch {
-    return null;
-  }
+  return (await getConfig()).channels.applications || null;
 }
 
 export type V2Message = {
@@ -134,8 +121,8 @@ export async function sendDirectMessageV2(userId: string, components: Component[
 
 export type Overwrite = { id: string; type: 0 | 1; allow?: string; deny?: string };
 
-export function createGuildTextChannel(opts: { name: string; parentId: string; overwrites: Overwrite[]; topic?: string }) {
-  return bot<{ id: string; name: string }>(`/guilds/${env.discord.guildId}/channels`, {
+export async function createGuildTextChannel(opts: { name: string; parentId: string; overwrites: Overwrite[]; topic?: string }) {
+  return bot<{ id: string; name: string }>(`/guilds/${await guildId()}/channels`, {
     method: "POST",
     body: {
       name: opts.name,
@@ -156,8 +143,8 @@ export function deleteChannel(channelId: string) {
 }
 
 /** Registers (or updates) the bot's slash commands in the server. Safe to run any number of times. */
-export function registerGuildCommands(commands: unknown[]) {
-  return bot<unknown[]>(`/applications/${env.discord.clientId}/guilds/${env.discord.guildId}/commands`, {
+export async function registerGuildCommands(commands: unknown[]) {
+  return bot<unknown[]>(`/applications/${env.discord.clientId}/guilds/${await guildId()}/commands`, {
     method: "PUT",
     body: commands,
   });
@@ -192,8 +179,8 @@ export type GuildMember = {
   roles: string[];
 };
 
-export function fetchGuildRoles() {
-  return bot<GuildRole[]>(`/guilds/${env.discord.guildId}/roles`);
+export async function fetchGuildRoles() {
+  return bot<GuildRole[]>(`/guilds/${await guildId()}/roles`);
 }
 
 /** Every member of the server. Needs the Server Members intent (Developer Portal → Bot). */
@@ -201,7 +188,7 @@ export async function fetchGuildMembers(): Promise<GuildMember[]> {
   const all: GuildMember[] = [];
   let after = "0";
   for (let i = 0; i < 20; i++) {
-    const page = await bot<GuildMember[]>(`/guilds/${env.discord.guildId}/members?limit=1000&after=${after}`);
+    const page = await bot<GuildMember[]>(`/guilds/${await guildId()}/members?limit=1000&after=${after}`);
     all.push(...page);
     if (page.length < 1000) break;
     after = page[page.length - 1].user.id;
@@ -209,16 +196,16 @@ export async function fetchGuildMembers(): Promise<GuildMember[]> {
   return all;
 }
 
-export function fetchGuildMember(userId: string) {
-  return bot<GuildMember>(`/guilds/${env.discord.guildId}/members/${userId}`);
+export async function fetchGuildMember(userId: string) {
+  return bot<GuildMember>(`/guilds/${await guildId()}/members/${userId}`);
 }
 
-export function addMemberRole(userId: string, roleId: string) {
-  return bot(`/guilds/${env.discord.guildId}/members/${userId}/roles/${roleId}`, { method: "PUT" });
+export async function addMemberRole(userId: string, roleId: string) {
+  return bot(`/guilds/${await guildId()}/members/${userId}/roles/${roleId}`, { method: "PUT" });
 }
 
-export function removeMemberRole(userId: string, roleId: string) {
-  return bot(`/guilds/${env.discord.guildId}/members/${userId}/roles/${roleId}`, { method: "DELETE" });
+export async function removeMemberRole(userId: string, roleId: string) {
+  return bot(`/guilds/${await guildId()}/members/${userId}/roles/${roleId}`, { method: "DELETE" });
 }
 
 /** Starts a public thread on a message (used for infraction evidence). */
@@ -233,7 +220,7 @@ export function startThreadFromMessage(channelId: string, messageId: string, nam
 export async function setNickname(userId: string, nick: string): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      await bot(`/guilds/${env.discord.guildId}/members/${userId}`, { method: "PATCH", body: { nick } });
+      await bot(`/guilds/${await guildId()}/members/${userId}`, { method: "PATCH", body: { nick } });
       return;
     } catch (e) {
       if (e instanceof DiscordError && e.status === 429) {
@@ -281,4 +268,43 @@ export async function ephemeralFollowup(interactionToken: string, content: strin
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content, flags: 64, allowed_mentions: { parse: [] } }),
   }).catch(() => {});
+}
+
+/* ---------------- Server setup (Portal → Discord Setup) ---------------- */
+
+export type BotGuild = { id: string; name: string; icon: string | null };
+export type GuildChannel = { id: string; name: string; type: number; position: number; parent_id: string | null };
+
+/** Every server the bot is in. */
+export function listBotGuilds() {
+  return bot<BotGuild[]>(`/users/@me/guilds?limit=200`);
+}
+
+/** Makes the bot leave a server. */
+export function leaveGuild(id: string) {
+  return bot(`/users/@me/guilds/${id}`, { method: "DELETE" });
+}
+
+export function fetchRolesOf(id: string) {
+  return bot<(GuildRole & { permissions: string })[]>(`/guilds/${id}/roles`);
+}
+
+export function fetchChannelsOf(id: string) {
+  return bot<GuildChannel[]>(`/guilds/${id}/channels`);
+}
+
+export function fetchGuildInfo(id: string) {
+  return bot<{ id: string; name: string; owner_id: string; icon: string | null }>(`/guilds/${id}`);
+}
+
+/** The Discord account that owns the bot application (plus team members). */
+let ownerCache: { at: number; ids: string[] } | null = null;
+export async function botOwnerIds(): Promise<string[]> {
+  if (ownerCache && Date.now() - ownerCache.at < 3_600_000) return ownerCache.ids;
+  const app = await bot<{ owner?: { id: string }; team?: { members: { user: { id: string } }[] } | null }>(
+    `/oauth2/applications/@me`,
+  );
+  const ids = [app.owner?.id, ...(app.team?.members.map((m) => m.user.id) ?? [])].filter((x): x is string => !!x);
+  ownerCache = { at: Date.now(), ids };
+  return ids;
 }

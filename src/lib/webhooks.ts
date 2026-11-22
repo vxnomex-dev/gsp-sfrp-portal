@@ -1,47 +1,8 @@
 import "server-only";
 import { env } from "./env";
-import { IS_COMPONENTS_V2, clean, container, divider, quote, text, unix, type Component } from "./components";
-
-/**
- * Posts a Components V2 message through a plain channel webhook.
- *  - `?with_components=true` is required for webhooks not owned by a bot application
- *  - webhooks can't carry clickable buttons — application messages are posted by the bot instead
- *    (see applications-discord.ts); this is also their fallback if the bot can't post.
- */
-export async function sendWebhook(
-  url: string,
-  components: Component[],
-  mentions: { roles?: string[]; users?: string[] } = {},
-): Promise<boolean> {
-  if (!url) {
-    console.warn("[webhook] URL not configured; skipping");
-    return false;
-  }
-  const u = new URL(url);
-  u.searchParams.set("with_components", "true");
-  u.searchParams.set("wait", "true");
-  try {
-    const res = await fetch(u, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: "GSP Portal",
-        flags: IS_COMPONENTS_V2,
-        allowed_mentions: { parse: [], roles: mentions.roles ?? [], users: mentions.users ?? [] },
-        components,
-      }),
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      console.error("[webhook] failed", res.status, await res.text());
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error("[webhook] error", e);
-    return false;
-  }
-}
+import { clean, container, divider, quote, text, unix, type Component } from "./components";
+import { getConfig } from "./config";
+import { postChannelMessage } from "./discord-bot";
 
 export type ReportWebhookInput = {
   id: number;
@@ -57,9 +18,8 @@ export type ReportWebhookInput = {
   evidence: string | null;
 };
 
-export function buildReportMessage(r: ReportWebhookInput): Component[] {
+export function buildReportMessage(r: ReportWebhookInput, roleId: string): Component[] {
   const ref = `HR-${String(r.id).padStart(4, "0")}`;
-  const roleId = env.pingRoles.reports;
   return [
     ...(roleId ? [text(`<@&${roleId}>`)] : []),
     container([
@@ -81,11 +41,26 @@ export function buildReportMessage(r: ReportWebhookInput): Component[] {
           `**Reporter Roblox:** ${clean(r.reporterRoblox, 40)}`,
       ),
       divider(true),
-      text(`-# Confidential — Human Resources only. Open the case in the [GSP Portal](${env.baseUrl}/portal/reports/${r.id}).`),
+      text(`-# Confidential — Human Resources only. Open the case in the [FHP Portal](${env.baseUrl}/portal/reports/${r.id}).`),
     ]),
   ];
 }
 
-export function sendReportWebhook(r: ReportWebhookInput) {
-  return sendWebhook(env.webhooks.reports, buildReportMessage(r), { roles: [env.pingRoles.reports].filter(Boolean) });
+/** Posts a new trooper report to the Human Resources channel (Portal → Discord Setup). */
+export async function sendReportWebhook(r: ReportWebhookInput): Promise<boolean> {
+  const cfg = await getConfig();
+  if (!cfg.channels.reports) {
+    console.warn("[reports] no reports channel chosen in Discord Setup");
+    return false;
+  }
+  try {
+    await postChannelMessage(cfg.channels.reports, {
+      components: buildReportMessage(r, cfg.roles.reportsPing),
+      allowed_mentions: { parse: [], roles: [cfg.roles.reportsPing].filter(Boolean) },
+    });
+    return true;
+  } catch (e) {
+    console.error("[reports] bot could not post. Check the bot's permissions in the reports channel.", e);
+    return false;
+  }
 }

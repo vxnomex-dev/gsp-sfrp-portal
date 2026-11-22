@@ -19,26 +19,27 @@ export const section = (content: string, thumbUrl: string): Component => ({
   components: [text(content)],
   accessory: { type: 11, media: { url: thumbUrl } },
 });
-/** The Georgia State Patrol banner (public/images/gsp-banner-3.jpg), shown at the top of every message. */
+/** The Florida Highway Patrol banner (public/images/fhp-banner.jpg), shown at the top of every message. */
 export const banner = (): Component => ({
   type: 12,
-  items: [{ media: { url: `${env.baseUrl}/images/gsp-banner-3.jpg` }, description: "Georgia State Patrol" }],
+  items: [{ media: { url: `${env.baseUrl}/images/fhp-banner.jpg` }, description: "Florida Highway Patrol" }],
 });
 
-/** The "Georgia State" strip (public/images/gsp-footer-3.jpg), shown at the bottom of main messages. */
-export const footerBanner = (): Component => ({
-  type: 12,
-  items: [{ media: { url: `${env.baseUrl}/images/gsp-footer-3.jpg` }, description: "Georgia State Patrol" }],
-});
+/** Strip shown at the bottom of main messages. Set to an image in /public/images, or null for none. */
+export const FOOTER_BANNER: string | null = null;
+export const footerBanner = (): Component | null =>
+  FOOTER_BANNER
+    ? { type: 12, items: [{ media: { url: `${env.baseUrl}${FOOTER_BANNER}` }, description: "Florida Highway Patrol" }] }
+    : null;
 
 /**
  * A Components V2 container (no side colour).
- * Main messages get the GSP banner on top and the footer strip at the bottom; pass `withBanner = false`
+ * Main messages get the FHP banner on top and the footer strip (if set) at the bottom; pass `withBanner = false`
  * for small notices (claim, rename, close, close request…) to keep them as plain messages.
  */
 export const container = (components: Component[], withBanner = true): Component => ({
   type: 17,
-  components: withBanner ? [banner(), ...components, footerBanner()] : components,
+  components: withBanner ? [banner(), ...components, ...(footerBanner() ? [footerBanner()!] : [])] : components,
 });
 /** A file attached to the same message (Components V2 File component). */
 export const fileComponent = (name: string): Component => ({ type: 13, file: { url: `attachment://${name}` } });

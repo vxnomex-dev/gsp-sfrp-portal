@@ -20,7 +20,7 @@ export default function DivisionsPage() {
   return (
     <>
       <PageHeader eyebrow="Specialized Units" title="Divisions" image={site.images.headers.divisions}>
-        Beyond road patrol, the Georgia State Patrol maintains specialized divisions for troopers who have proven
+        Beyond road patrol, the Florida Highway Patrol maintains specialized divisions for troopers who have proven
         themselves on the highway.
       </PageHeader>
       <section className="py-16">

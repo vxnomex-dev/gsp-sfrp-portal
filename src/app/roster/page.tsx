@@ -13,7 +13,7 @@ export default function RosterPage() {
   return (
     <>
       <PageHeader eyebrow="Chain of Command" title="Department Roster" image={site.images.headers.roster}>
-        Every sworn member of the Georgia State Patrol, synced live from the South Fulton Roleplay Discord.
+        Every sworn member of the Florida Highway Patrol, synced live from the Florida State Roleplay Discord.
       </PageHeader>
       <section className="py-14">
         <div className="container-x">

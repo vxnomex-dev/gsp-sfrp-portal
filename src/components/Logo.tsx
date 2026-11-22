@@ -15,7 +15,7 @@ export function Logo({ size = 56 }: { size?: number }) {
         fill="oklch(79% 0.15 84)"
       />
       <text x="32" y="53" textAnchor="middle" fontFamily="Oswald, sans-serif" fontWeight="600" fontSize="9" fill="white" letterSpacing="1">
-        GSP
+        {site.shortName}
       </text>
     </svg>
   );

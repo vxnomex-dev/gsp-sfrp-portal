@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /** Long-answer questions on the cadet application. Edit freely — the form, webhook and portal all read from this list. */
 export const CADET_QUESTIONS = [
-  { key: "why", label: "Why do you want to join the Georgia State Patrol?", min: 60 },
+  { key: "why", label: "Why do you want to join the Florida Highway Patrol?", min: 60 },
   { key: "experience", label: "Describe any previous law enforcement roleplay experience (servers, departments, ranks).", min: 20 },
   { key: "role", label: "In your own words, what is the role of a State Trooper, and how is it different from a county deputy?", min: 60 },
   { key: "pursuit", label: "You attempt a traffic stop and the driver flees at high speed. Walk us through what you do.", min: 60 },

@@ -7,13 +7,14 @@ import type { Permission } from "@/lib/permissions";
 type GuardResult = { viewer: Viewer; denied?: undefined } | { viewer?: undefined; denied: React.ReactNode };
 
 const messages: Record<Permission, string> = {
-  portal: "The employee portal is only available to members of the Georgia State Patrol.",
+  portal: "The employee portal is only available to members of the Florida Highway Patrol.",
   applications: "Only command staff and application reviewers can view cadet applications.",
   reports: "Employee reports are restricted to Human Resources and the Office of the Colonel.",
   content: "Only command staff can edit website content.",
   alerts: "Only the Office of the Colonel can issue statewide alerts.",
   press: "Only the Press Release Team can publish press releases.",
   notices: "Only High Command and the Office of the Colonel can post department notices.",
+  setup: "Only the bot owner, server admins and the Office of the Colonel can change the Discord setup.",
 };
 
 export async function guard(perms: Permission | Permission[], next: string): Promise<GuardResult> {
@@ -24,7 +25,7 @@ export async function guard(perms: Permission | Permission[], next: string): Pro
     return {
       denied: (
         <LoginRequired next={next} title="Employee login">
-          Log in with the Discord account you use in the South Fulton Roleplay server. Your access is based on your
+          Log in with the Discord account you use in the Florida State Roleplay server. Your access is based on your
           Discord roles.
         </LoginRequired>
       ),

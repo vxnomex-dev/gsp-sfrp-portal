@@ -1,6 +1,7 @@
 import "server-only";
 import { env } from "./env";
 import { query, queryOne } from "./db";
+import { getConfig, rolesFor } from "./config";
 import {
   DiscordError,
   fetchGuildMember,
@@ -51,20 +52,15 @@ const RANK_ORDER = RANKS.map((r) => r.key) as RankKey[];
 const rankIndex = (k: RankKey | null) => (k ? RANK_ORDER.indexOf(k) : RANK_ORDER.length);
 export const rankInfo = (k: RankKey): Rank => RANKS.find((r) => r.key === k)!;
 
-/** Rank roles look like "𝐆𝐒𝐏 | Colonel" (the fancy letters become plain "GSP" after NFKC normalisation). */
-const RANK_ROLE_PREFIX = /^\s*GSP\s*[|│¦:\-–—]\s*/i;
+/** Rank roles look like "FHP | Colonel" (fancy letters like "𝐅𝐇𝐏" become plain "FHP" after NFKC normalisation). */
+const RANK_ROLE_PREFIX = /^\s*(?:FHP|GSP)\s*[|│¦:\-–—]\s*/i;
 
-/** Department roles: anyone holding one of these is on the roster even without a rank (e.g. cadets). */
-export const DEPARTMENT_ROLE_IDS = [
-  "1558194099327074422", // Office of the Colonel
-  "1558194099327074418", // High Command
-  "1558194099297853566", // Command
-  "1558194099268358282", // Supervisor
-  "1558194099268358274", // Patrol
-  "1558194099197059241", // Department Personnel
-];
+/** Department roles (Portal → Discord Setup): anyone holding one is on the roster even without a rank (e.g. cadets). */
+async function departmentRoleIds() {
+  return rolesFor(await getConfig(), "ootc", "highCommand", "command", "supervisor", "patrol", "personnel");
+}
 
-/** Which rank a Discord role represents, by its name — only exact "GSP | <rank>" roles count. */
+/** Which rank a Discord role represents, by its name — only exact "FHP | <rank>" roles count. */
 export function rankForRoleName(name: string): RankKey | null {
   const n = name.normalize("NFKC");
   const prefix = RANK_ROLE_PREFIX.exec(n);
@@ -187,10 +183,10 @@ export function invalidateRosterCache() {
   cache = null;
 }
 
-function rankRoleMap(roles: GuildRole[]) {
+function rankRoleMap(roles: GuildRole[], deptRoles: string[] = []) {
   const map = new Map<string, RankKey>();
   for (const r of roles) {
-    if (DEPARTMENT_ROLE_IDS.includes(r.id) || r.name === "@everyone") continue;
+    if (deptRoles.includes(r.id) || r.name === "@everyone") continue;
     const k = rankForRoleName(r.name);
     if (k) map.set(r.id, k);
   }
@@ -204,7 +200,7 @@ function memberRank(roleIds: string[], rankByRole: Map<string, RankKey>): RankKe
 
 let rolesCache: { at: number; roles: GuildRole[] } | null = null;
 
-/** A member's GSP rank from their role IDs (guild roles cached for 5 minutes). Null if none / lookup fails. */
+/** A member's FHP rank from their role IDs (guild roles cached for 5 minutes). Null if none / lookup fails. */
 export async function rankForRoles(roleIds: string[]): Promise<RankKey | null> {
   try {
     if (!rolesCache || Date.now() - rolesCache.at > 300_000) rolesCache = { at: Date.now(), roles: await fetchGuildRoles() };
@@ -217,7 +213,8 @@ export async function rankForRoles(roleIds: string[]): Promise<RankKey | null> {
 /** Everyone on the roster, sorted by rank, then callsign, then name. */
 export async function buildRoster({ fresh = false } = {}) {
   const { members, roles } = await loadDiscord(fresh);
-  const rankByRole = rankRoleMap(roles);
+  const dept = await departmentRoleIds();
+  const rankByRole = rankRoleMap(roles, dept);
   const callsigns = new Map(
     (await query<{ user_id: string; callsign: number }>(`SELECT user_id, callsign FROM roster_callsigns`)).map((r) => [
       r.user_id,
@@ -229,7 +226,7 @@ export async function buildRoster({ fresh = false } = {}) {
   for (const m of members) {
     if (m.user.bot) continue;
     const rank = memberRank(m.roles, rankByRole);
-    if (!rank && !m.roles.some((r) => DEPARTMENT_ROLE_IDS.includes(r))) continue;
+    if (!rank && !m.roles.some((r) => dept.includes(r))) continue;
     entries.push({
       userId: m.user.id,
       name: baseName(m),

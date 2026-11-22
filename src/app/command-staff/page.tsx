@@ -12,7 +12,7 @@ export default function CommandStaffPage() {
   return (
     <>
       <PageHeader eyebrow="Office of the Colonel" title="Command Staff" image={site.images.headers.commandStaff}>
-        The senior leadership of the Georgia State Patrol, responsible for the direction, discipline and reputation of the
+        The senior leadership of the Florida Highway Patrol, responsible for the direction, discipline and reputation of the
         department.
       </PageHeader>
       <section className="py-16">

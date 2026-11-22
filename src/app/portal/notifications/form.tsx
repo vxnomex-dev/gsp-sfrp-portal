@@ -71,7 +71,7 @@ export function ComposeForm({
         maxLength={150}
         defaultValue={v.title}
         error={e.title}
-        placeholder={kind === "alert" ? "e.g. Missing 8-year-old last seen near Fairburn Rd" : kind === "press" ? "e.g. Troopers arrest suspect after I-85 pursuit" : "e.g. Mandatory department meeting Saturday"}
+        placeholder={kind === "alert" ? "e.g. Missing 8-year-old last seen near Springfield Ave" : kind === "press" ? "e.g. Troopers arrest suspect after I-85 pursuit" : "e.g. Mandatory department meeting Saturday"}
       />
       <TextArea
         name="body"

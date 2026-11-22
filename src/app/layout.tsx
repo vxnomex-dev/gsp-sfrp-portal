@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: `${site.name} | ${site.community} (ERLC)`,
     template: `%s | ${site.name} (${site.community})`,
   },
-  description: `The Georgia State Patrol of ${site.community} — a roleplay community on ${site.game}.`,
+  description: `The Florida Highway Patrol of ${site.community} — a roleplay community on ${site.game}.`,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

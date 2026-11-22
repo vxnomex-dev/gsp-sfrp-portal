@@ -78,13 +78,13 @@ export const PACKAGES: Package[] = [
   {
     key: "marked",
     name: "Marked (Lightbar)",
-    description: "Standard GSP livery with the roof lightbar.",
+    description: "Standard FHP livery with the roof lightbar.",
     minRank: "prob",
   },
   {
     key: "slicktop",
     name: "Slick Top",
-    description: "Standard GSP livery, no roof lightbar — visor, window and grille lights only.",
+    description: "Standard FHP livery, no roof lightbar — visor, window and grille lights only.",
     minRank: "cpl",
   },
   {

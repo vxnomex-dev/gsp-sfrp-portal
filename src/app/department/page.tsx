@@ -25,7 +25,7 @@ export default function DepartmentPage() {
   return (
     <>
       <PageHeader eyebrow="Department Personnel Only" title="Department Information" image={site.images.headers.department}>
-        Internal reference for sworn members of the Georgia State Patrol. Do not share outside the department.
+        Internal reference for sworn members of the Florida Highway Patrol. Do not share outside the department.
       </PageHeader>
       <section className="py-14">
         <div className="container-x">
@@ -144,7 +144,7 @@ function VehicleRegulations({ rank, name }: { rank: RankKey | null; name: string
           </div>
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">
-            No “GSP | Rank” role was found on your Discord account, so we can&apos;t show your personal authorization.
+            No “FHP | Rank” role was found on your Discord account, so we can&apos;t show your personal authorization.
             Use the rank chart below.
           </p>
         )}

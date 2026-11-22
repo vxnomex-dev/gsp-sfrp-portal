@@ -31,8 +31,14 @@ export function Header() {
     <header className="sticky top-0 z-40">
       <div className="bg-navy-deep text-[0.8rem] text-white/85">
         <div className="container-x flex h-7 items-center justify-between gap-4">
-          <span className="truncate">
-            {site.community} — {site.game}
+          <span className="flex min-w-0 items-center gap-2">
+            {site.images.communityLogo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={site.images.communityLogo} alt="" className="h-[18px] w-[18px] shrink-0 object-contain" />
+            )}
+            <span className="truncate">
+              {site.community} — {site.game}
+            </span>
           </span>
           <span className="hidden sm:inline">Roleplay community · Not a real agency</span>
         </div>
@@ -75,7 +81,7 @@ export function Footer() {
           <div>
             <div className="font-display text-xl uppercase">{site.name}</div>
             <p className="mt-1 text-sm text-white/75">
-              Serving the citizens of {site.community} with courtesy, professionalism and integrity.
+              Serving the citizens of {site.community} with courtesy, service and protection.
             </p>
           </div>
         </div>
@@ -93,8 +99,8 @@ export function Footer() {
         <div>
           <div className="eyebrow mb-3">Notice</div>
           <p className="text-sm text-white/75">
-            This site represents the Georgia State Patrol within {site.community} on {site.game}. It is a roleplay
-            community and is not affiliated with the real Georgia Department of Public Safety.
+            This site represents the Florida Highway Patrol within {site.community} on {site.game}. It is a roleplay
+            community and is not affiliated with the real Florida Department of Highway Safety and Motor Vehicles.
           </p>
         </div>
       </div>

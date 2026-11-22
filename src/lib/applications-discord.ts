@@ -1,5 +1,6 @@
 import "server-only";
 import { env } from "./env";
+import { getConfig } from "./config";
 import { site } from "./site";
 import { query, queryOne } from "./db";
 import { avatarUrl } from "./discord";
@@ -22,7 +23,6 @@ import {
   sendDirectMessageV2,
   type V2Message,
 } from "./discord-bot";
-import { sendWebhook } from "./webhooks";
 import type { Application } from "./data";
 
 /* ------------------------------------------------------------------ */
@@ -81,9 +81,16 @@ type AppForMessage = Pick<
   | "denial_reason"
 >;
 
-export function buildApplicationMessage(a: AppForMessage, { withButtons }: { withButtons: boolean }): V2Message {
+/** The application message, pinging the role chosen in Portal → Discord Setup. */
+export async function applicationMessage(a: AppForMessage, opts: { withButtons: boolean }): Promise<V2Message> {
+  return buildApplicationMessage(a, { ...opts, roleId: (await getConfig()).roles.applicationsPing });
+}
+
+export function buildApplicationMessage(
+  a: AppForMessage,
+  { withButtons, roleId }: { withButtons: boolean; roleId: string },
+): V2Message {
   const decided = a.status === "accepted" || a.status === "denied";
-  const roleId = env.pingRoles.applications;
   const submitted = unix(a.created_at ? new Date(a.created_at) : new Date());
 
   let footer: Component[];
@@ -116,7 +123,7 @@ export function buildApplicationMessage(a: AppForMessage, { withButtons }: { wit
       text(`${roleId ? `<@&${roleId}> ` : ""}<@${a.discord_id}>`),
       container([
         section(
-          `## New Cadet Application\n-# ${appRef(a.id)} • Georgia State Patrol • <t:${submitted}:f>\n\n` +
+          `## New Cadet Application\n-# ${appRef(a.id)} • Florida Highway Patrol • <t:${submitted}:f>\n\n` +
             `**Applicant:** <@${a.discord_id}> (\`${clean(a.discord_username, 40)}\`)\n` +
             `**Roblox:** ${clean(a.roblox_username, 40)}\n` +
             `**Age:** ${a.age}  •  **Timezone:** ${clean(a.timezone, 40)}\n` +
@@ -126,59 +133,56 @@ export function buildApplicationMessage(a: AppForMessage, { withButtons }: { wit
         divider(),
         ...answers.map((q) => text(`**${q.question}**\n${quote(q.answer, 380)}`)),
         divider(true),
-        text(`-# Full application in the [GSP Portal](${env.baseUrl}/portal/applications/${a.id}).`),
+        text(`-# Full application in the [FHP Portal](${env.baseUrl}/portal/applications/${a.id}).`),
         ...footer,
       ]),
     ],
   };
 }
 
-/**
- * Posts a new application to Discord. Uses the bot (so the Accept/Deny buttons work);
- * if the bot can't post there, falls back to the webhook without buttons so nothing is lost.
- */
+/** Posts a new application to the applications channel (Portal → Discord Setup) with Accept / Deny buttons. */
 export async function announceApplication(a: AppForMessage): Promise<boolean> {
   const channelId = await getApplicationsChannelId();
-  if (channelId && env.discord.botToken) {
-    try {
-      const msg = await postChannelMessage(channelId, buildApplicationMessage(a, { withButtons: true }));
-      await query(`UPDATE applications SET discord_channel_id=$1, discord_message_id=$2 WHERE id=$3`, [
-        msg.channel_id,
-        msg.id,
-        a.id,
-      ]);
-      return true;
-    } catch (e) {
-      console.error("[applications] bot could not post — falling back to webhook. Check the bot's channel permissions.", e);
-    }
+  if (!channelId || !env.discord.botToken) {
+    console.warn("[applications] no applications channel chosen in Discord Setup");
+    return false;
   }
-  const fallback = buildApplicationMessage(a, { withButtons: false });
-  return sendWebhook(env.webhooks.applications, fallback.components, {
-    roles: fallback.allowed_mentions?.roles,
-    users: fallback.allowed_mentions?.users,
-  });
+  try {
+    const msg = await postChannelMessage(channelId, await applicationMessage(a, { withButtons: true }));
+    await query(`UPDATE applications SET discord_channel_id=$1, discord_message_id=$2 WHERE id=$3`, [
+      msg.channel_id,
+      msg.id,
+      a.id,
+    ]);
+    return true;
+  } catch (e) {
+    console.error("[applications] bot could not post. Check the bot's permissions in the applications channel.", e);
+    return false;
+  }
 }
 
 /* ------------------------------------------------------------------ */
 /* Direct messages to the applicant                                    */
 /* ------------------------------------------------------------------ */
 
-export function acceptedDM(a: { id: number; discord_id: string }): Component[] {
+export function acceptedDM(a: { id: number; discord_id: string }, dashboardChannelId: string): Component[] {
   return [
     container([
       text(
         `## Cadet Application Accepted\n` +
-          `Congratulations <@${a.discord_id}>! Your application to the **Georgia State Patrol** has been **accepted**.\n-# ${appRef(a.id)}`,
+          `Congratulations <@${a.discord_id}>! Your application to the **Florida Highway Patrol** has been **accepted**.\n-# ${appRef(a.id)}`,
       ),
       divider(),
       text(
         `### Your next steps\n` +
-          `**1.** Head over to <#${site.cadetDashboardChannelId}> (Cadet Dashboard) and read it over carefully.\n` +
+          (dashboardChannelId
+            ? `**1.** Head over to <#${dashboardChannelId}> (Cadet Dashboard) and read it over carefully.\n`
+            : `**1.** Head over to the Cadet Dashboard channel and read it over carefully.\n`) +
           `**2.** Wait for a training to commence — keep an eye out for the announcement.\n` +
           `**3.** When a training commences, attend it. Your **Field Training Instructor** will issue your callsign and you'll continue from there.`,
       ),
       divider(true),
-      text(`-# Welcome to the Patrol. • Georgia State Patrol — ${site.community}`),
+      text(`-# Welcome to the Patrol. • Florida Highway Patrol — ${site.community}`),
     ]),
   ];
 }
@@ -188,13 +192,13 @@ export function deniedDM(a: { id: number; discord_id: string; denial_reason: str
     container([
       text(
         `## Cadet Application Denied\n` +
-          `Thank you for your interest in the **Georgia State Patrol**. Unfortunately, your application did not pass this time.`,
+          `Thank you for your interest in the **Florida Highway Patrol**. Unfortunately, your application did not pass this time.`,
       ),
       divider(),
       ...(a.denial_reason ? [text(`**Reason:**\n${quote(a.denial_reason, 500)}`)] : []),
       text(`You're welcome to apply again in the future.`),
       divider(true),
-      text(`-# ${appRef(a.id)} • Georgia State Patrol — ${site.community}`),
+      text(`-# ${appRef(a.id)} • Florida Highway Patrol — ${site.community}`),
     ]),
   ];
 }
@@ -239,7 +243,7 @@ export async function recordDecision(opts: {
 
   let dmSent: boolean | null = null;
   if (opts.notify && (app.status === "accepted" || app.status === "denied")) {
-    dmSent = await sendDirectMessageV2(app.discord_id, app.status === "accepted" ? acceptedDM(app) : deniedDM(app));
+    dmSent = await sendDirectMessageV2(app.discord_id, app.status === "accepted" ? acceptedDM(app, (await getConfig()).channels.cadetDashboard) : deniedDM(app));
   }
 
   if (!opts.skipMessageEdit) await refreshApplicationMessage(app);
@@ -251,7 +255,7 @@ export async function refreshApplicationMessage(app: Application) {
   if (!app.discord_channel_id || !app.discord_message_id) return;
   try {
     await editChannelMessage(app.discord_channel_id, app.discord_message_id, {
-      components: buildApplicationMessage(app, { withButtons: true }).components,
+      components: (await applicationMessage(app, { withButtons: true })).components,
     });
   } catch (e) {
     console.error("[applications] could not update Discord message", e);

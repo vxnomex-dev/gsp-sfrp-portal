@@ -15,7 +15,7 @@ export default function NotificationsPage({ searchParams }: PageProps<"/notifica
   return (
     <>
       <PageHeader eyebrow="Public Information" title="Notification Center" image={site.images.headers.notifications}>
-        Statewide alerts and press releases from the Georgia State Patrol.
+        Statewide alerts and press releases from the Florida Highway Patrol.
       </PageHeader>
       <section className="py-14">
         <div className="container-x">
@@ -100,7 +100,7 @@ async function Feed({ searchParams }: { searchParams: PageProps<"/notifications"
           <BellRing className="text-navy" size={28} />
           <h3 className="mt-3 text-xl font-semibold uppercase text-navy-ink">Get these in your DMs</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Choose which notifications the GSP bot sends you on Discord — statewide alerts, press releases or both.
+            Choose which notifications the FHP bot sends you on Discord — statewide alerts, press releases or both.
           </p>
           {viewer ? (
             <Link href="/profile#notifications" className="btn btn-navy mt-4 w-full">

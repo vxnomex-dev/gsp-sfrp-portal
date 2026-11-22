@@ -13,7 +13,7 @@ export default function ReportPage() {
   return (
     <>
       <PageHeader eyebrow="Human Resources" title="Report a Trooper" image={site.images.headers.report}>
-        If a member of the Georgia State Patrol acted unprofessionally or broke the rules, let us know. Every report is
+        If a member of the Florida Highway Patrol acted unprofessionally or broke the rules, let us know. Every report is
         reviewed by Human Resources.
       </PageHeader>
       <section className="py-14">

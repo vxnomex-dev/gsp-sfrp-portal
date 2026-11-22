@@ -1,5 +1,6 @@
 "use server";
 
+import { getConfig } from "@/lib/config";
 import { refresh } from "next/cache";
 import { THEME_COOKIE } from "@/lib/theme";
 import { query, queryOne } from "@/lib/db";
@@ -33,9 +34,9 @@ export async function submitApplication(_: FormState, fd: FormData): Promise<For
   const viewer = await getViewer();
   if (!viewer) return { message: "Your session expired. Please log in with Discord again.", values };
 
-  const botReady = Boolean(env.discord.botToken && env.discord.guildId);
+  const botReady = Boolean(env.discord.botToken && (await getConfig()).guildId);
   if (botReady && !viewer.inGuild) {
-    return { message: "You must join the South Fulton Roleplay Discord before applying.", values };
+    return { message: "You must join the Florida State Roleplay Discord before applying.", values };
   }
 
   const parsed = applicationSchema.safeParse(values);
@@ -126,7 +127,7 @@ export async function submitReport(_: FormState, fd: FormData): Promise<FormStat
 /* Staff actions — every one re-checks permissions server-side         */
 /* ------------------------------------------------------------------ */
 
-async function requirePermission(p: "applications" | "reports" | "content") {
+async function requirePermission(p: import("@/lib/permissions").Permission) {
   const viewer = await getViewer();
   if (!viewer || !viewer.can(p)) throw new Error("You do not have permission to do that.");
   return viewer;
@@ -243,7 +244,7 @@ export async function saveDivision(_: FormState, fd: FormData): Promise<FormStat
 }
 
 export async function registerDiscordCommands(): Promise<FormState> {
-  await requirePermission("content");
+  await requirePermission("setup");
   const { registerGuildCommands } = await import("@/lib/discord-bot");
   const { SLASH_COMMANDS } = await import("@/lib/tickets");
   const { DISCIPLINE_COMMANDS } = await import("@/lib/discipline");
@@ -376,4 +377,71 @@ export async function saveProfile(_: FormState, fd: FormData): Promise<FormState
   (await cookies()).set(THEME_COOKIE, theme, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
   refresh();
   return { ok: true, message: "Settings saved." };
+}
+
+/* ------------------------------------------------------------------ */
+/* Discord Setup                                                       */
+/* ------------------------------------------------------------------ */
+
+export async function chooseServer(_: FormState, fd: FormData): Promise<FormState> {
+  await requirePermission("setup");
+  const { listBotGuilds } = await import("@/lib/discord-bot");
+  const { EMPTY_CONFIG, saveConfig } = await import("@/lib/config");
+  const { invalidateRosterCache } = await import("@/lib/roster");
+  const id = String(fd.get("guild") ?? "");
+  const guild = (await listBotGuilds()).find((g) => g.id === id);
+  if (!guild) return { message: "The bot isn't in that server." };
+  const cfg = await getConfig();
+  // A different server starts with a blank role/channel setup (old IDs don't exist there)
+  await saveConfig(cfg.guildId === id ? { ...cfg, guildName: guild.name } : { ...EMPTY_CONFIG, guildId: id, guildName: guild.name });
+  invalidateRosterCache();
+  refresh();
+  return { ok: true, message: `The bot now works in ${guild.name}. Pick its roles and channels below.` };
+}
+
+export async function leaveServer(_: FormState, fd: FormData): Promise<FormState> {
+  await requirePermission("setup");
+  const { leaveGuild, listBotGuilds } = await import("@/lib/discord-bot");
+  const { EMPTY_CONFIG, saveConfig } = await import("@/lib/config");
+  const id = String(fd.get("guild") ?? "");
+  const guild = (await listBotGuilds()).find((g) => g.id === id);
+  if (!guild) return { message: "The bot isn't in that server." };
+  if (String(fd.get("confirm") ?? "").trim().toUpperCase() !== "LEAVE") return { message: "Type LEAVE to confirm." };
+  try {
+    await leaveGuild(id);
+  } catch (e) {
+    return { message: `Discord refused: ${(e as Error).message}` };
+  }
+  if ((await getConfig()).guildId === id) await saveConfig(EMPTY_CONFIG);
+  refresh();
+  return { ok: true, message: `The bot left ${guild.name}.` };
+}
+
+export async function saveDiscordSetup(_: FormState, fd: FormData): Promise<FormState> {
+  await requirePermission("setup");
+  const { ROLE_SLOTS, CHANNEL_SLOTS, saveConfig } = await import("@/lib/config");
+  const { fetchRolesOf, fetchChannelsOf } = await import("@/lib/discord-bot");
+  const { invalidateRosterCache } = await import("@/lib/roster");
+  const cfg = await getConfig();
+  if (!cfg.guildId) return { message: "Choose the server first." };
+  const [roles, channels] = await Promise.all([fetchRolesOf(cfg.guildId), fetchChannelsOf(cfg.guildId)]);
+  const roleIds = new Set(roles.map((r) => r.id));
+  const channelIds = new Set(channels.map((c) => c.id));
+  const next = { ...cfg, roles: { ...cfg.roles }, channels: { ...cfg.channels } };
+  for (const k of Object.keys(ROLE_SLOTS) as (keyof typeof ROLE_SLOTS)[]) {
+    const v = String(fd.get(`role_${k}`) ?? "");
+    next.roles[k] = roleIds.has(v) ? v : "";
+  }
+  for (const k of Object.keys(CHANNEL_SLOTS) as (keyof typeof CHANNEL_SLOTS)[]) {
+    const v = String(fd.get(`channel_${k}`) ?? "");
+    next.channels[k] = channelIds.has(v) ? v : "";
+  }
+  await saveConfig(next);
+  invalidateRosterCache();
+  refresh();
+  const missing = [
+    ...Object.entries(next.roles).filter(([, v]) => !v),
+    ...Object.entries(next.channels).filter(([, v]) => !v),
+  ].length;
+  return { ok: true, message: missing ? `Saved. ${missing} setting${missing === 1 ? " is" : "s are"} still empty.` : "Saved. Everything is set up." };
 }

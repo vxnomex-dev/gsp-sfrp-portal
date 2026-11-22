@@ -1,5 +1,5 @@
 import "server-only";
-import { env } from "./env";
+import type { DiscordConfig } from "./config";
 
 export type Permission =
   | "portal" // employee portal
@@ -8,46 +8,47 @@ export type Permission =
   | "content" // edit command staff + divisions
   | "alerts" // publish statewide alerts (Office of the Colonel)
   | "press" // publish press releases (Press Release Team + Office of the Colonel)
-  | "notices"; // publish important info to department personnel (Office of the Colonel + High Command)
+  | "notices" // publish important info to department personnel (Office of the Colonel + High Command)
+  | "setup"; // Discord Setup: choose the server, roles and channels (bot owner, server admins, Office of the Colonel)
+
+export const ALL_PERMISSIONS: Permission[] = ["portal", "applications", "content", "reports", "alerts", "press", "notices", "setup"];
 
 export type Access = {
   permissions: Permission[];
   labels: string[]; // human readable list of matched groups
 };
 
-export function resolveAccess(roleIds: string[]): Access {
-  const has = (ids: string[]) => ids.some((id) => roleIds.includes(id));
+/** What a member can do, from their Discord role IDs and the roles chosen on Portal → Discord Setup. */
+export function resolveAccess(roleIds: string[], cfg: DiscordConfig): Access {
+  const has = (...ids: string[]) => ids.some((id) => id && roleIds.includes(id));
+  const r = cfg.roles;
   const perms = new Set<Permission>();
   const labels: string[] = [];
 
-  if (has(env.roles.employee)) {
-    perms.add("portal");
-    labels.push("Department Personnel");
+  if (has(r.ootc)) {
+    for (const p of ALL_PERMISSIONS) perms.add(p);
+    labels.push("Office of the Colonel");
   }
-  if (has(env.roles.applicationReviewers)) {
+  if (has(r.highCommand)) {
+    for (const p of ["portal", "applications", "content", "notices"] as const) perms.add(p);
+    labels.push("High Command");
+  }
+  if (has(r.command)) {
     perms.add("portal");
     perms.add("applications");
     labels.push("Command");
   }
-  if (has(env.roles.commandStaff)) {
-    perms.add("portal");
-    perms.add("applications");
-    perms.add("content");
-    perms.add("notices");
-    labels.push("High Command");
-  }
-  // Office of the Colonel: everything.
-  if (has(env.roles.ootc)) {
-    for (const p of ["portal", "applications", "content", "reports", "alerts", "press", "notices"] as const) perms.add(p);
-    labels.unshift("Office of the Colonel");
-  }
-  // Otherwise reports are tied to Human Resources only — High Command / Command do not get them automatically.
-  if (has(env.roles.psb)) {
+  // Reports are tied to Human Resources (and the Office of the Colonel) only.
+  if (has(r.hr)) {
     perms.add("portal");
     perms.add("reports");
     labels.push("Human Resources");
   }
-  if (has(env.roles.press)) {
+  if (has(r.supervisor, r.patrol, r.personnel)) {
+    perms.add("portal");
+    if (!labels.length) labels.push("Department Personnel");
+  }
+  if (has(r.press)) {
     perms.add("press");
     labels.push("Press Release Team");
   }

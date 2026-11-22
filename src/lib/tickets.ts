@@ -15,28 +15,41 @@ import {
   sendDirectMessageV2,
   type FileUpload,
   type Overwrite,
+  fetchGuildRoles,
 } from "./discord-bot";
 import { buildTranscript } from "./transcripts";
+import { getConfig, rolesFor, type RoleSlot } from "./config";
 
-/** #ticket-transcripts — every closed ticket's transcript is posted here. */
-export const TRANSCRIPT_CHANNEL_ID = "1572686004882636990";
 
 /* ------------------------------------------------------------------ */
 /* Configuration                                                       */
 /* ------------------------------------------------------------------ */
 
-const ROLE = {
-  officeOfTheColonel: "1558194099327074422",
-  highCommand: "1558194099327074418",
-  command: "1558194099297853566",
-  supervisor: "1558194099268358282",
-};
-
 /**
- * Roles that can see, claim and close ANY ticket (all three types), on top of each panel's own team.
- * They are not pinged on tickets outside their own team.
+ * Who handles each ticket type comes from Portal → Discord Setup:
+ *  - General Support: Supervisors
+ *  - Divisional / Command Support: High Command + Command
+ * Office of the Colonel, High Command and Command can also see, claim and close ANY ticket.
  */
-export const CLOSE_ANY_ROLES = [ROLE.officeOfTheColonel, ROLE.highCommand, ROLE.command];
+const SUPPORT_SLOTS = {
+  general: ["supervisor"],
+  divisional: ["highCommand", "command"],
+  command: ["highCommand", "command"],
+} as const satisfies Record<string, readonly RoleSlot[]>;
+const CATEGORY_SLOT = { general: "ticketGeneral", divisional: "ticketDivisional", command: "ticketCommand" } as const;
+
+async function teamFor(kind: TicketKind) {
+  const cfg = await getConfig();
+  const supportRoles = rolesFor(cfg, ...SUPPORT_SLOTS[kind]);
+  return {
+    supportRoles,
+    pingRoles: supportRoles,
+    closeAnyRoles: rolesFor(cfg, "ootc", "highCommand", "command"),
+    categoryId: cfg.channels[CATEGORY_SLOT[kind]],
+    guildId: cfg.guildId,
+    transcriptsChannel: cfg.channels.transcripts,
+  };
+}
 
 export type TicketKind = "general" | "divisional" | "command";
 
@@ -45,11 +58,6 @@ export const TICKET_TYPES: Record<
   {
     label: string;
     prefix: string;
-    categoryId: string;
-    /** Roles that can see the channel and use /claim, /close, /close-request. */
-    supportRoles: string[];
-    /** Roles pinged when the ticket opens (the opener is always pinged too). */
-    pingRoles: string[];
     summary: string;
     placeholder: string;
   }
@@ -57,18 +65,12 @@ export const TICKET_TYPES: Record<
   general: {
     label: "General Support",
     prefix: "general",
-    categoryId: "1558194104939061342",
-    supportRoles: [ROLE.supervisor],
-    pingRoles: [ROLE.supervisor],
     summary: "General concerns, questions and inquiries.",
     placeholder: "How can General Support help?",
   },
   divisional: {
     label: "Divisional Support",
     prefix: "divisional",
-    categoryId: "1558194104939061346",
-    supportRoles: [ROLE.highCommand, ROLE.command],
-    pingRoles: [ROLE.highCommand, ROLE.command],
     summary:
       "Specialty unit applications, division transfers, division questions, training requests, qualification requests, operational concerns, unit activity requests and other matters related to specialized divisions.",
     placeholder: "How can Divisional Support help?",
@@ -76,9 +78,6 @@ export const TICKET_TYPES: Record<
   command: {
     label: "Command Support",
     prefix: "command",
-    categoryId: "1558194104939061341",
-    supportRoles: [ROLE.highCommand, ROLE.command],
-    pingRoles: [ROLE.highCommand, ROLE.command],
     summary: "Leadership concerns, administrative matters and issues requiring review by the Office of the Colonel.",
     placeholder: "How can Command Support help?",
   },
@@ -131,9 +130,11 @@ export type Ticket = {
 };
 
 export const displayName = (m: Member) => m.nick || m.user.global_name || m.user.username;
-const isSupport = (m: Member, kind: TicketKind) => m.roles.some((r) => TICKET_TYPES[kind].supportRoles.includes(r));
 /** Can claim / close / close-request: the panel's team, plus Office of the Colonel / High Command / Command on any ticket. */
-const canClose = (m: Member, kind: TicketKind) => isSupport(m, kind) || m.roles.some((r) => CLOSE_ANY_ROLES.includes(r));
+async function canClose(m: Member, kind: TicketKind) {
+  const team = await teamFor(kind);
+  return m.roles.some((r) => team.supportRoles.includes(r) || team.closeAnyRoles.includes(r));
+}
 
 function snowflakeDate(id: string) {
   return new Date(Number(BigInt(id) / BigInt(4194304)) + 1420070400000);
@@ -237,12 +238,12 @@ export function inquiryModal(kind: TicketKind) {
 /* Opening a ticket                                                    */
 /* ------------------------------------------------------------------ */
 
-function welcomeMessage(t: { id: number; kind: TicketKind; inquiry: string }, member: Member): Component[] {
+function welcomeMessage(t: { id: number; kind: TicketKind; inquiry: string }, member: Member, pingRoles: string[]): Component[] {
   const cfg = TICKET_TYPES[t.kind];
   const u = member.user;
   const created = unix(snowflakeDate(u.id));
   return [
-    text([...cfg.pingRoles.map((r) => `<@&${r}>`), `<@${u.id}>`].join(" ")),
+    text([...pingRoles.map((r) => `<@&${r}>`), `<@${u.id}>`].join(" ")),
     container([
       text(`## Welcome to ${cfg.label}, <@${u.id}>.`),
       text(
@@ -277,6 +278,7 @@ function welcomeMessage(t: { id: number; kind: TicketKind; inquiry: string }, me
  */
 export async function openTicket(interactionToken: string, kind: TicketKind, member: Member, inquiry: string) {
   const cfg = TICKET_TYPES[kind];
+  const team = await teamFor(kind);
   const u = member.user;
 
   const existing = await queryOne<{ channel_id: string }>(
@@ -298,23 +300,23 @@ export async function openTicket(interactionToken: string, kind: TicketKind, mem
 
   try {
     const overwrites: Overwrite[] = [
-      { id: env.discord.guildId, type: 0, deny: String(P.VIEW) }, // @everyone can't see it
+      { id: team.guildId, type: 0, deny: String(P.VIEW) }, // @everyone can't see it
       { id: u.id, type: 1, allow: TALK }, // the person who opened it
       { id: env.discord.clientId, type: 1, allow: BOT }, // the bot itself
       // this panel's support team + the roles that can close any ticket
-      ...[...new Set([...cfg.supportRoles, ...CLOSE_ANY_ROLES])].map((r) => ({ id: r, type: 0 as const, allow: TALK })),
+      ...[...new Set([...team.supportRoles, ...team.closeAnyRoles])].map((r) => ({ id: r, type: 0 as const, allow: TALK })),
     ];
     const channel = await createGuildTextChannel({
       name: channelName(cfg.prefix, u.username),
-      parentId: cfg.categoryId,
+      parentId: team.categoryId,
       overwrites,
       topic: `${cfg.label} ticket #${id} — opened by ${u.username} (${u.id})`,
     });
     await query(`UPDATE tickets SET channel_id=$1, channel_name=$2 WHERE id=$3`, [channel.id, channel.name, id]);
 
     await postChannelMessage(channel.id, {
-      components: welcomeMessage({ id, kind, inquiry }, member),
-      allowed_mentions: { parse: [], roles: cfg.pingRoles, users: [u.id] },
+      components: welcomeMessage({ id, kind, inquiry }, member, team.pingRoles),
+      allowed_mentions: { parse: [], roles: team.pingRoles, users: [u.id] },
     });
 
     await editInteractionResponse(interactionToken, { content: `${cfg.label} ticket opened: <#${channel.id}>` });
@@ -337,7 +339,7 @@ type Reply = Record<string, unknown>;
 export async function claimTicket(channelId: string, member: Member): Promise<Reply> {
   const t = await getTicketByChannel(channelId);
   if (!t) return privateReply("This command only works inside an open support ticket.");
-  if (!canClose(member, t.kind)) return privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can claim this ticket.`);
+  if (!(await canClose(member, t.kind))) return privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can claim this ticket.`);
   if (t.claimed_by_id) {
     return privateReply(
       t.claimed_by_id === member.user.id ? "You've already claimed this ticket." : `This ticket was already claimed by <@${t.claimed_by_id}>.`,
@@ -361,7 +363,7 @@ export async function claimTicket(channelId: string, member: Member): Promise<Re
 export async function renameTicket(channelId: string, member: Member, requested: string): Promise<Reply> {
   const t = await getTicketByChannel(channelId);
   if (!t) return privateReply("This command only works inside an open support ticket.");
-  if (!canClose(member, t.kind)) return privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can rename this ticket.`);
+  if (!(await canClose(member, t.kind))) return privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can rename this ticket.`);
 
   const name = requested
     .trim()
@@ -400,7 +402,7 @@ export async function renameTicket(channelId: string, member: Member, requested:
 export async function startClose(channelId: string, member: Member, reason: string | null, { byOpener = false } = {}) {
   const t = await getTicketByChannel(channelId);
   if (!t) return { reply: privateReply("This command only works inside an open support ticket."), ticket: null };
-  const allowed = canClose(member, t.kind) || (byOpener && member.user.id === t.opener_id);
+  const allowed = (await canClose(member, t.kind)) || (byOpener && member.user.id === t.opener_id);
   if (!allowed) {
     return {
       reply: privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can close this ticket. Ask them to use \`/close-request\`.`),
@@ -456,6 +458,7 @@ export async function finishClose(t: Ticket, member: Member, reason: string) {
           closedAt: new Date(),
         },
         messages,
+        Object.fromEntries((await fetchGuildRoles().catch(() => [])).map((r) => [r.id, r.name])),
       );
       transcript = { name: `transcript-${chName}-${t.id}.html`, data: html, contentType: "text/html" };
     } catch (e) {
@@ -480,8 +483,10 @@ export async function finishClose(t: Ticket, member: Member, reason: string) {
         ...(transcript ? [fileComponent(transcript.name)] : [text("-# Transcript unavailable.")]),
       ]),
     ];
-    if (transcript) await postChannelMessageWithFile(TRANSCRIPT_CHANNEL_ID, { components: log }, transcript);
-    else await postChannelMessage(TRANSCRIPT_CHANNEL_ID, { components: log });
+    const logChannel = (await getConfig()).channels.transcripts;
+    if (!logChannel) throw new Error("No transcripts channel chosen in Discord Setup");
+    if (transcript) await postChannelMessageWithFile(logChannel, { components: log }, transcript);
+    else await postChannelMessage(logChannel, { components: log });
   } catch (e) {
     console.error("[tickets] could not post to the transcripts channel", e);
   }
@@ -500,7 +505,7 @@ export async function finishClose(t: Ticket, member: Member, reason: string) {
         ),
         ...(transcript ? [divider(), text(`**Transcript** — open the file below in your browser to read the full conversation.`), fileComponent(transcript.name)] : []),
         divider(true),
-        text(`-# Need more help? Open a new ticket any time. • Georgia State Patrol — ${site.community}`),
+        text(`-# Need more help? Open a new ticket any time. • Florida Highway Patrol — ${site.community}`),
       ]),
     ],
     transcript,
@@ -515,7 +520,7 @@ export async function finishClose(t: Ticket, member: Member, reason: string) {
 export async function closeRequest(channelId: string, member: Member, reason: string | null): Promise<Reply> {
   const t = await getTicketByChannel(channelId);
   if (!t) return privateReply("This command only works inside an open support ticket.");
-  if (!canClose(member, t.kind)) return privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can request to close this ticket.`);
+  if (!(await canClose(member, t.kind))) return privateReply(`Only the ${TICKET_TYPES[t.kind].label} team can request to close this ticket.`);
   const why = reason?.trim();
   return {
     type: 4,
@@ -546,7 +551,7 @@ export async function closeRequest(channelId: string, member: Member, reason: st
 export async function keepOpen(channelId: string, member: Member): Promise<Reply> {
   const t = await getTicketByChannel(channelId);
   if (!t) return privateReply("This ticket is no longer open.");
-  if (member.user.id !== t.opener_id && !canClose(member, t.kind)) {
+  if (member.user.id !== t.opener_id && !(await canClose(member, t.kind))) {
     return privateReply("Only the ticket opener or the support team can answer this.");
   }
   return {
