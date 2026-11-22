@@ -18,14 +18,23 @@ export class DiscordError extends Error {
 
 async function bot<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   if (!env.discord.botToken) throw new DiscordError(0, "DISCORD_BOT_TOKEN is not set");
-  const res = await fetch(`${API}${path}`, {
-    method: init.method ?? "GET",
-    headers: { Authorization: `Bot ${env.discord.botToken}`, "Content-Type": "application/json" },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-    cache: "no-store",
-  });
-  if (!res.ok) throw new DiscordError(res.status, await res.text());
-  return (res.status === 204 ? null : await res.json()) as T;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API}${path}`, {
+      method: init.method ?? "GET",
+      headers: { Authorization: `Bot ${env.discord.botToken}`, "Content-Type": "application/json" },
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      cache: "no-store",
+    });
+    // Rate limited: wait as long as Discord asks (up to 3 tries, max 10s each), then try again
+    if (res.status === 429 && attempt < 3) {
+      const body = (await res.json().catch(() => ({}))) as { retry_after?: number };
+      const wait = Math.min(Number(body.retry_after ?? res.headers.get("retry-after") ?? 1), 10);
+      await new Promise((r) => setTimeout(r, Math.ceil(wait * 1000) + 150));
+      continue;
+    }
+    if (!res.ok) throw new DiscordError(res.status, await res.text());
+    return (res.status === 204 ? null : await res.json()) as T;
+  }
 }
 
 /** The channel cadet applications are posted in (Portal → Discord Setup). */
