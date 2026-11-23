@@ -2,7 +2,7 @@
 
 import { fmtCallsign } from "@/lib/callsign";
 import { useActionState } from "react";
-import { rosterSync, saveAssignments } from "@/app/actions";
+import { changeCallsign, rosterSync, saveAssignments } from "@/app/actions";
 import type { FormState } from "@/lib/forms";
 import { Alert, SubmitButton } from "@/components/ui";
 
@@ -118,6 +118,37 @@ export function AssignmentsForm({
         <SubmitButton className="btn btn-navy" pendingText="Saving…">Save assignments</SubmitButton>
         {state.message && <Alert tone={state.ok ? "success" : "error"}>{state.message}</Alert>}
       </div>
+    </form>
+  );
+}
+
+export function ChangeCallsignForm({ members }: { members: { id: string; label: string }[] }) {
+  const [state, action] = useActionState<FormState, FormData>(changeCallsign, {});
+  return (
+    <form action={action} className="space-y-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="min-w-64 flex-1">
+          <span className="field-label">Member</span>
+          <select name="member" className="field" defaultValue="">
+            <option value="" disabled>
+              Choose a member…
+            </option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="w-36">
+          <span className="field-label">New callsign</span>
+          <input name="callsign" className="field" placeholder="C-02" autoComplete="off" />
+        </label>
+        <SubmitButton className="btn btn-navy" pendingText="Changing…">
+          Change callsign
+        </SubmitButton>
+      </div>
+      {state.message && <Alert tone={state.ok ? "success" : "error"}>{state.message}</Alert>}
     </form>
   );
 }

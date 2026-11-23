@@ -445,3 +445,27 @@ export async function saveDiscordSetup(_: FormState, fd: FormData): Promise<Form
   ].length;
   return { ok: true, message: missing ? `Saved. ${missing} setting${missing === 1 ? " is" : "s are"} still empty.` : "Saved. Everything is set up." };
 }
+
+export async function changeCallsign(_: FormState, fd: FormData): Promise<FormState> {
+  await requirePermission("content");
+  const { setCallsignManually } = await import("@/lib/roster");
+  const { fmtCallsign } = await import("@/lib/callsign");
+  const userId = String(fd.get("member") ?? "");
+  const n = Number(String(fd.get("callsign") ?? "").replace(/[^0-9]/g, ""));
+  if (!userId) return { message: "Pick a member." };
+  if (!n) return { message: "Enter a callsign, e.g. C-02." };
+  try {
+    const r = await setCallsignManually(userId, n);
+    refresh();
+    return {
+      ok: !r.problems.length,
+      message:
+        `${r.me} is now ${fmtCallsign(n)}` +
+        (r.other ? ` and ${r.other} is now ${r.oldCallsign !== null ? fmtCallsign(r.oldCallsign) : "unassigned"}` : "") +
+        "." +
+        (r.problems.length ? ` Couldn't rename: ${r.problems.join("; ")}` : ""),
+    };
+  } catch (e) {
+    return { message: (e as Error).message };
+  }
+}

@@ -1,11 +1,11 @@
-import { fmtCallsignRange } from "@/lib/callsign";
+import { fmtCallsign, fmtCallsignRange } from "@/lib/callsign";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
 import { guard } from "../guard";
 import { CALLSIGNS_READY, RANKS, SLOT_RANKS, buildRoster, getAssignments, getLastSync, type RosterEntry } from "@/lib/roster";
 import { fmtDate } from "@/lib/format";
-import { AssignmentsForm, SyncForms } from "./forms";
+import { AssignmentsForm, ChangeCallsignForm, SyncForms } from "./forms";
 
 export const maxDuration = 300;
 
@@ -94,6 +94,24 @@ async function RosterSettings() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="card space-y-4 p-6">
+        <div>
+          <h3 className="font-display text-xl uppercase text-navy-ink">Change a callsign</h3>
+          <p className="mt-1 text-muted-foreground">
+            Give someone a specific number in their rank&apos;s block. If another member has it, the two swap. Nicknames
+            update automatically.
+          </p>
+        </div>
+        <ChangeCallsignForm
+          members={entries
+            .filter((e) => e.rank)
+            .map((e) => ({
+              id: e.userId,
+              label: `${e.callsign !== null ? fmtCallsign(e.callsign) : "—"}  ${e.name} (${RANKS.find((r) => r.key === e.rank)!.label})`,
+            }))}
+        />
       </div>
 
       <div className="card card-gold space-y-4 p-6">

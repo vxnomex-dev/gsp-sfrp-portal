@@ -38,13 +38,9 @@ export const RANKS = [
   { key: "major", label: "Major", tier: "command", block: [4, 6], name: "major" },
   { key: "captain", label: "Captain", tier: "command", block: [7, 12], name: "captain" },
   { key: "lieutenant", label: "Lieutenant", tier: "command", block: [13, 18], name: "lieutenant" },
-  // Sergeants share C-19–C-34; every trooper rank shares C-50–C-99 (a promotion inside the block keeps the number)
-  { key: "srsgt", label: "Senior Sergeant", tier: "supervisors", block: [19, 34], name: "senior sergeant" },
+  // Troopers and Probationary Troopers share C-50–C-99 (finishing probation keeps the number)
   { key: "sgt", label: "Sergeant", tier: "supervisors", block: [19, 34], name: "sergeant" },
   { key: "cpl", label: "Corporal", tier: "supervisors", block: [35, 49], name: "corporal" },
-  { key: "mtpr", label: "Master Trooper", tier: "patrol", block: [50, 99], name: "master trooper" },
-  { key: "srtpr", label: "Senior Trooper", tier: "patrol", block: [50, 99], name: "senior trooper" },
-  { key: "tfc", label: "Trooper First Class", tier: "patrol", block: [50, 99], name: "trooper first class" },
   { key: "tpr", label: "Trooper", tier: "patrol", block: [50, 99], name: "trooper" },
   { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [50, 99], name: "probationary trooper" },
 ] as const satisfies readonly Rank[];
@@ -434,4 +430,36 @@ export async function syncIfStale() {
   const last = await getLastSync();
   if (last && Date.now() - new Date(last.at).getTime() < 10 * 60_000) return;
   await syncRoster().catch((e) => console.error("[roster] auto-sync failed", e));
+}
+
+/**
+ * Gives a member a specific callsign by hand (Portal → Roster & Callsigns). The number must be in their rank's
+ * block; if someone else holds it, the two swap. Both nicknames are updated.
+ */
+export async function setCallsignManually(userId: string, callsign: number) {
+  const { entries } = await buildRoster({ fresh: true });
+  const me = entries.find((e) => e.userId === userId);
+  if (!me) throw new Error("That member isn't on the roster.");
+  if (!me.rank) throw new Error(`${me.name} has no rank role, so they can't have a callsign.`);
+  if (!inBlock(callsign, me.rank)) {
+    const r = rankInfo(me.rank);
+    throw new Error(`${fmtCallsign(callsign)} isn't a ${r.label} callsign (${fmtCallsign(r.block[0])}–${fmtCallsign(r.block[1])}).`);
+  }
+  const other = entries.find((e) => e.callsign === callsign && e.userId !== userId) ?? null;
+  if (other && !inBlock(me.callsign, other.rank)) {
+    throw new Error(`${fmtCallsign(callsign)} belongs to ${other.name}, who can't take ${me.callsign !== null ? fmtCallsign(me.callsign) : "no callsign"} in return.`);
+  }
+  // Free both numbers first so the unique constraint never clashes, then assign
+  await saveCallsign(userId, null);
+  if (other) await saveCallsign(other.userId, null);
+  await saveCallsign(userId, callsign);
+  if (other && me.callsign !== null) await saveCallsign(other.userId, me.callsign);
+
+  const problems: string[] = [];
+  for (const [e, n] of [[me, callsign], ...(other ? [[other, me.callsign] as const] : [])] as const) {
+    const desired = nicknameFor(n, e.name);
+    if ((e.nick ?? null) !== desired) await setNickname(e.userId, desired).catch((err) => problems.push(`${desired}: ${explain(err)}`));
+  }
+  cache = null;
+  return { me: me.name, other: other?.name ?? null, oldCallsign: me.callsign, problems };
 }
