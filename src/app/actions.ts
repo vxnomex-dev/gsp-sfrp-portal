@@ -249,8 +249,9 @@ export async function registerDiscordCommands(): Promise<FormState> {
   const { SLASH_COMMANDS } = await import("@/lib/tickets");
   const { DISCIPLINE_COMMANDS } = await import("@/lib/discipline");
   const { SHIFT_COMMANDS } = await import("@/lib/shift-commands");
+  const { VERIFY_COMMANDS } = await import("@/lib/verify");
   try {
-    const result = await registerGuildCommands([...SLASH_COMMANDS, ...DISCIPLINE_COMMANDS, ...SHIFT_COMMANDS]);
+    const result = await registerGuildCommands([...SLASH_COMMANDS, ...DISCIPLINE_COMMANDS, ...SHIFT_COMMANDS, ...VERIFY_COMMANDS]);
     return {
       ok: true,
       message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /rename, /support-panel, /promote, /infraction, /shift, /loa.`,

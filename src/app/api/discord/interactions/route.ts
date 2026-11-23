@@ -1,5 +1,5 @@
 import { after, NextResponse, type NextRequest } from "next/server";
-import { verifyDiscordRequest, editInteractionOriginal, ephemeralFollowup } from "@/lib/discord-bot";
+import { verifyDiscordRequest, editInteractionOriginal, editInteractionResponse, ephemeralFollowup } from "@/lib/discord-bot";
 import {
   ACCEPT_PREFIX,
   DENY_PREFIX,
@@ -47,6 +47,8 @@ import {
   shiftCommand,
   submitLoaFromDiscord,
 } from "@/lib/shift-commands";
+import { VERIFY_ID, VERIFY_RECHECK_ID, postVerifyPanel, runVerify } from "@/lib/verify";
+
 import { LOA_APPROVE, LOA_DENY, LOA_DENY_INPUT, LOA_DENY_MODAL, loaDenyModal, loaMessage } from "@/lib/loa";
 
 /**
@@ -100,6 +102,20 @@ const subOption = (i: Interaction, name: string) => {
   return v === undefined ? null : String(v);
 };
 const deferPrivate = () => json({ type: 5, data: { flags: 64 } });
+
+/* ---------------- Verification (Dock) ---------------- */
+
+function verifyLater(i: Interaction) {
+  const member = i.member!;
+  after(async () => {
+    const reply = await runVerify(member).catch((e) => {
+      console.error("[verify] failed", e);
+      return { content: "Something went wrong. Please try again.", components: [] as unknown[] };
+    });
+    await editInteractionResponse(i.token, { components: [], ...reply }).catch((e) => console.error("[verify] reply failed", e));
+  });
+  return deferPrivate();
+}
 
 /* ---------------- Cadet applications ---------------- */
 
@@ -216,6 +232,10 @@ export async function POST(req: NextRequest) {
           return json(await renameTicket(channelId, i.member, option(i, "name") ?? ""));
         case "support-panel":
           return json(await postPanel(channelId));
+        case "verify-panel":
+          return json(privateReply(await postVerifyPanel(channelId)));
+        case "verify":
+          return verifyLater(i);
 
         case "shift":
           return json(await shiftCommand(i.member, subOptions(i)?.name ?? "", subOption(i, "user")));
@@ -330,6 +350,9 @@ export async function POST(req: NextRequest) {
       });
       return json({ type: 6 });
     }
+
+    // Verification panel: Verify / Check again
+    if (i.type === 3 && (cid === VERIFY_ID || cid === VERIFY_RECHECK_ID)) return verifyLater(i);
 
     // Support panel: support type picked → show the "What's up?" pop-up
     if (i.type === 3 && cid === IDS.panelSelect) {

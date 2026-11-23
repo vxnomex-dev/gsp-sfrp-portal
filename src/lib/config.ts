@@ -18,6 +18,7 @@ export const ROLE_SLOTS = {
   press: { label: "Press Release Team", hint: "Publishes press releases." },
   communityMember: { label: "Community Member", hint: "The only role kept when someone is terminated." },
   loa: { label: "Leave of Absence", hint: "Given while someone's leave is approved, removed when it ends." },
+  civilian: { label: "Civilian (verified)", hint: "Given when someone verifies their Roblox account through Dock." },
   applicationsPing: { label: "Ping for new applications", hint: "Pinged when a cadet application comes in." },
   reportsPing: { label: "Ping for trooper reports", hint: "Pinged when someone reports a trooper." },
 } as const;
