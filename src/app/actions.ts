@@ -36,7 +36,12 @@ export async function submitApplication(_: FormState, fd: FormData): Promise<For
 
   const botReady = Boolean(env.discord.botToken && (await getConfig()).guildId);
   if (botReady && !viewer.inGuild) {
-    return { message: "You must join the Florida State Roleplay Discord before applying.", values };
+    return { message: "You must join the Florida Highway Patrol Discord before applying.", values };
+  }
+
+  const { isBlacklisted } = await import("@/lib/discipline");
+  if (await isBlacklisted(viewer.uid, viewer.roles)) {
+    return { message: "You are blacklisted from the Florida Highway Patrol and can't apply.", values };
   }
 
   const parsed = applicationSchema.safeParse(values);
@@ -251,6 +256,7 @@ export async function registerDiscordCommands(): Promise<FormState> {
   const { SHIFT_COMMANDS } = await import("@/lib/shift-commands");
   const { VERIFY_COMMANDS } = await import("@/lib/verify");
   const { HANDBOOK_COMMANDS, postAllHandbooks } = await import("@/lib/handbooks");
+  const { RECORD_COMMANDS } = await import("@/lib/recording");
   try {
     const result = await registerGuildCommands([
       ...SLASH_COMMANDS,
@@ -258,6 +264,7 @@ export async function registerDiscordCommands(): Promise<FormState> {
       ...SHIFT_COMMANDS,
       ...VERIFY_COMMANDS,
       ...HANDBOOK_COMMANDS,
+      ...RECORD_COMMANDS,
     ]);
     // Make sure the division handbooks are posted (or updated) in their channels
     const handbooks = await postAllHandbooks();

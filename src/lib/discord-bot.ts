@@ -196,6 +196,17 @@ export type GuildMember = {
   roles: string[];
 };
 
+/** The voice channel a member is in right now, or null. */
+export async function fetchVoiceChannelOf(userId: string): Promise<string | null> {
+  try {
+    const v = await bot<{ channel_id: string | null }>(`/guilds/${await guildId()}/voice-states/${userId}`);
+    return v?.channel_id ?? null;
+  } catch (e) {
+    if (e instanceof DiscordError && e.status === 404) return null;
+    throw e;
+  }
+}
+
 export async function fetchGuildRoles() {
   return bot<GuildRole[]>(`/guilds/${await guildId()}/roles`);
 }

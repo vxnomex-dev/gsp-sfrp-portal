@@ -66,6 +66,19 @@ async function ApplyGate() {
     );
   }
 
+  const { isBlacklisted } = await import("@/lib/discipline");
+  if (await isBlacklisted(viewer.uid, viewer.roles)) {
+    return (
+      <div className="card p-8 text-center">
+        <h2 className="text-2xl font-semibold uppercase text-navy-ink">You can&apos;t apply</h2>
+        <p className="mt-3 text-muted-foreground">
+          You are blacklisted from the Florida Highway Patrol, so you can&apos;t submit an application. If you think this is a
+          mistake, open a Command Support ticket in the Discord.
+        </p>
+      </div>
+    );
+  }
+
   const mine = await getMyApplications(viewer.uid);
   const open = mine.find((a) => a.status === "pending" || a.status === "review");
   if (open) {

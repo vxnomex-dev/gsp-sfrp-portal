@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { verifyDiscordRequest, editInteractionOriginal, editInteractionResponse, ephemeralFollowup } from "@/lib/discord-bot";
 import { HANDBOOK_PREFIX, handbookSection, postAllHandbooks } from "@/lib/handbooks";
+import { recordCommand } from "@/lib/recording";
 import {
   ACCEPT_PREFIX,
   DENY_PREFIX,
@@ -231,6 +232,8 @@ export async function POST(req: NextRequest) {
           return json(privateReply(await postVerifyPanel(channelId)));
         case "verify":
           return verifyLater(i);
+        case "record":
+          return json(await recordCommand(subOptions(i)?.name ?? "", i.member, subOption(i, "reason")));
         case "handbook":
           after(async () => {
             const lines = await postAllHandbooks();

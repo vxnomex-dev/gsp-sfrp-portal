@@ -30,6 +30,14 @@ import { getConfig, rolesFor } from "./config";
  *  - /infraction: Human Resources, Office of the Colonel
  *  - Termination keeps only the Community Member role.
  */
+/** The State Blacklist role: the Discord Setup slot, else a role named "State Blacklist". */
+export async function blacklistRoleId(): Promise<string | null> {
+  const cfg = await getConfig();
+  if (cfg.roles.blacklist) return cfg.roles.blacklist;
+  const roles = await fetchGuildRoles().catch(() => []);
+  return roles.find((r) => /state\s*blacklist/i.test(r.name))?.id ?? null;
+}
+
 async function disciplineConfig() {
   const cfg = await getConfig();
   return {
@@ -38,6 +46,7 @@ async function disciplineConfig() {
     promoteRoles: rolesFor(cfg, "ootc", "highCommand", "command"),
     infractRoles: rolesFor(cfg, "hr", "ootc"),
     communityMemberRoleIds: rolesFor(cfg, "communityMember"),
+    civilianRoleIds: rolesFor(cfg, "civilian"),
   };
 }
 
@@ -48,6 +57,7 @@ export const INFRACTION_TYPES = {
   inactivity: "Inactivity Notice",
   suspension: "Suspension",
   demotion: "Demotion",
+  blacklist: "Blacklist",
 } as const;
 export type InfractionKind = keyof typeof INFRACTION_TYPES;
 
@@ -216,7 +226,9 @@ function infractionSentence(inf: Infraction, subject: string) {
   const verb =
     inf.kind === "termination"
       ? `${subject === "You" ? "have" : "has"} been **terminated** from the Florida Highway Patrol by **Human Resources**`
-      : `${subject === "You" ? "have" : "has"} received ${article(type)} **${type}** from **Human Resources**`;
+      : inf.kind === "blacklist"
+        ? `${subject === "You" ? "have" : "has"} been **blacklisted** from the Florida Highway Patrol by **Human Resources**`
+        : `${subject === "You" ? "have" : "has"} received ${article(type)} **${type}** from **Human Resources**`;
   const forWhat = inf.policy ? ` for **${clean(inf.policy, 100)}**` : "";
   return `> ${subject} ${verb}${forWhat} on <t:${t}:D> at <t:${t}:t>.`;
 }
@@ -270,16 +282,18 @@ function infractionDM(inf: Infraction): Component[] {
   ];
 }
 
-/** Strips every role except Community Member (and roles Discord manages itself). Returns the removed role IDs. */
-async function stripRoles(userId: string, problems: string[]) {
+/**
+ * Strips every role except the ones kept (and roles Discord manages itself). Returns the removed role IDs.
+ * Termination keeps Community Member; Blacklist keeps only Civilian.
+ */
+async function stripRoles(userId: string, problems: string[], mode: "termination" | "blacklist" = "termination") {
   const [member, roles, dc] = await Promise.all([fetchGuildMember(userId), fetchGuildRoles(), disciplineConfig()]);
   const byId = new Map(roles.map((r) => [r.id, r]));
-  const keep = new Set(
-    dc.communityMemberRoleIds.length
-      ? dc.communityMemberRoleIds
-      : roles.filter((r) => /community\s*member/i.test(r.name)).map((r) => r.id),
-  );
-  if (!keep.size) problems.push("No \"Community Member\" role found — every removable role was taken off.");
+  const configured = mode === "blacklist" ? dc.civilianRoleIds : dc.communityMemberRoleIds;
+  const pattern = mode === "blacklist" ? /^@?\s*civilian\s*$/i : /community\s*member/i;
+  const keepLabel = mode === "blacklist" ? "Civilian" : "Community Member";
+  const keep = new Set(configured.length ? configured : roles.filter((r) => pattern.test(r.name)).map((r) => r.id));
+  if (!keep.size) problems.push(`No "${keepLabel}" role found — every removable role was taken off.`);
   const removed: string[] = [];
   for (const roleId of member.roles) {
     const role = byId.get(roleId);
@@ -398,12 +412,18 @@ export async function runInfraction(opts: {
     ]);
 
     // Termination: strip roles (keep Community Member) and free the callsign
-    if (kind === "termination") {
-      const removed = await stripRoles(userId, problems).catch((e) => {
+    // Blacklist: strip everything but Civilian, then give the State Blacklist role
+    if (kind === "termination" || kind === "blacklist") {
+      const removed = await stripRoles(userId, problems, kind).catch((e) => {
         problems.push(`Couldn't strip roles: ${explain(e)}`);
         return [] as string[];
       });
       await query(`UPDATE infractions SET removed_roles=$1 WHERE id=$2`, [JSON.stringify(removed), inf.id]);
+      if (kind === "blacklist") {
+        const role = await blacklistRoleId();
+        if (!role) problems.push("No State Blacklist role is set — pick one on Portal → Discord Setup.");
+        else await addMemberRole(userId, role).catch((e) => problems.push(`Couldn't give the State Blacklist role: ${explain(e)}`));
+      }
       invalidateRosterCache();
     }
 
@@ -453,8 +473,13 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
       }).catch(() => {});
     }
 
-    // Undo a termination: give the roles back
-    if (inf.kind === "termination" && inf.removed_roles) {
+    // Undo a blacklist: take the State Blacklist role off
+    if (inf.kind === "blacklist") {
+      const role = await blacklistRoleId();
+      if (role) await removeMemberRole(inf.user_id, role).catch((e) => problems.push(`Couldn't remove the State Blacklist role: ${explain(e)}`));
+    }
+    // Undo a termination or blacklist: give the roles back
+    if ((inf.kind === "termination" || inf.kind === "blacklist") && inf.removed_roles) {
       const roles: string[] = typeof inf.removed_roles === "string" ? JSON.parse(inf.removed_roles) : inf.removed_roles;
       for (const r of roles) await addMemberRole(inf.user_id, r).catch((e) => problems.push(`Couldn't restore <@&${r}>: ${explain(e)}`));
       if (roles.length) {
@@ -475,7 +500,7 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
     await editInteractionResponse(token, {
       content:
         `${caseRef(inf.id)} voided.` +
-        (inf.kind === "termination" ? " Their roles have been restored." : "") +
+        (inf.kind === "termination" || inf.kind === "blacklist" ? " Their roles have been restored." : "") +
         (problems.length ? `\n${problems.join("\n")}` : ""),
     });
   } catch (e) {
@@ -536,3 +561,13 @@ export const DISCIPLINE_COMMANDS = [
     ],
   },
 ];
+
+/** Blacklisted members can't apply: they hold the State Blacklist role or have an active Blacklist infraction. */
+export async function isBlacklisted(userId: string, roles: string[]) {
+  const role = await blacklistRoleId();
+  if (role && roles.includes(role)) return true;
+  const row = await queryOne(`SELECT id FROM infractions WHERE user_id=$1 AND kind='blacklist' AND status <> 'voided' LIMIT 1`, [userId]).catch(
+    () => null,
+  );
+  return Boolean(row);
+}
