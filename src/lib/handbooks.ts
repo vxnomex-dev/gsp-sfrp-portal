@@ -19,14 +19,14 @@ export const HANDBOOKS = {
     intro:
       "Internal Affairs protects the integrity of the Florida Highway Patrol. We investigate complaints against troopers fairly and thoroughly, and recommend action based on evidence — never on rumour or personal feelings.\n\n" +
       "Everything in this channel and every case you work is **confidential**. Use the buttons below to read each part of the handbook.",
-    footer: "Internal Affairs · Human Resources · Florida Highway Patrol",
+    footer: "Internal Affairs Division · Florida Highway Patrol",
     sections: [
       {
         id: "role",
         label: "Your Role",
         body:
           "## Your Role\n" +
-          "Internal Affairs (IA) is part of **Human Resources** and answers to the **Office of the Colonel**.\n\n" +
+          "The **Internal Affairs Division** (IA) answers to the **Office of the Colonel** and works alongside **Human Resources**. Members are handpicked.\n\n" +
           "**What IA does**\n" +
           "- Reviews every complaint made against FHP personnel.\n" +
           "- Investigates misconduct and policy violations, whether reported by the public or found internally.\n" +
@@ -337,7 +337,7 @@ export const HANDBOOKS = {
           "## Working With Other Units\n" +
           "- **Canine Unit** — request a K-9 for an exterior sniff when you have suspicion but not probable cause. Don't hold the driver unreasonably long waiting for it.\n" +
           "- **Patrol** — ask for backup for multi-occupant or high-risk stops.\n" +
-          "- **Special Response Team** — hand over armed, barricaded or high-risk suspects.\n" +
+          "- **Aggressive Driving Unit** — hand over street racers and reckless drivers you come across.\n" +
           "- **Supervisors** — notify a supervisor of every major seizure, pursuit or use of force.\n" +
           "- **Other agencies** — share what you find when a case crosses into their jurisdiction.",
       },

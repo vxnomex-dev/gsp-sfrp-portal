@@ -235,7 +235,8 @@ export async function saveDivision(_: FormState, fd: FormData): Promise<FormStat
   const commander = String(fd.get("commander") ?? "").trim();
   const summary = String(fd.get("summary") ?? "").trim().slice(0, 600);
   const duties = String(fd.get("duties") ?? "").trim().slice(0, 1000);
-  const recruitment = fd.get("recruitment") === "open" ? "open" : "closed";
+  const r = String(fd.get("recruitment"));
+  const recruitment = r === "open" || r === "handpicked" ? r : "closed";
   if (!summary) return { message: "Summary is required." };
   await query(`UPDATE divisions SET commander=$1, summary=$2, duties=$3, recruitment=$4 WHERE slug=$5`, [
     commander || null,

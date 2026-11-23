@@ -65,6 +65,7 @@ export const SCHEMA_SQL = [
     sort_order INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`,
+  `ALTER TABLE divisions ADD COLUMN IF NOT EXISTS commander_callsign INTEGER`,
   // Professional Standards Bureau was renamed to Human Resources
   `UPDATE divisions SET name='Human Resources', abbreviation='HR',
      summary=replace(summary, 'PSB investigates', 'HR investigates')
@@ -233,34 +234,34 @@ const COMMAND_STAFF = [
 
 const DIVISIONS = [
   {
-    slug: "nighthawks",
-    name: "Nighthawks",
-    abbreviation: "NH",
+    slug: "adu",
+    name: "Aggressive Driving Unit",
+    abbreviation: "ADU",
     summary:
-      "The Patrol's dedicated DUI task force, working the late hours to take impaired and dangerous drivers off Florida's roads.",
+      "Targets the most dangerous behavior on Florida's highways — excessive speed, street racing, and reckless and aggressive driving.",
     duties:
-      "Impaired-driving enforcement\nSobriety checkpoints and saturation patrols\nNighttime high-visibility enforcement\nSupport to troopers on DUI investigations",
-    restricted: false,
+      "Speed enforcement on interstates and state roads\nStreet racing and reckless driving crackdowns\nUnmarked and stealth patrol operations\nHigh-visibility enforcement details",
+    commanderCallsign: 13,
   },
   {
-    slug: "csu",
-    name: "Crime Suppression Unit",
-    abbreviation: "CSU",
+    slug: "ia",
+    name: "Internal Affairs Division",
+    abbreviation: "IAD",
     summary:
-      "A proactive enforcement team deployed to high-crime areas to disrupt criminal activity before it reaches the highway.",
+      "Protects the integrity of the Patrol by investigating complaints and misconduct involving FHP personnel — fairly, thoroughly and confidentially.",
     duties:
-      "Targeted saturation patrols\nPursuit and apprehension of violent offenders\nSupport to local agencies during crime surges\nHigh-visibility deterrence operations",
-    restricted: false,
+      "Investigation of public complaints\nInternal misconduct investigations\nPolicy compliance reviews\nRecommendations for corrective action",
+    commanderCallsign: null,
   },
   {
-    slug: "srt",
-    name: "Special Response Team",
-    abbreviation: "SRT",
+    slug: "canine",
+    name: "Canine Unit",
+    abbreviation: "K-9",
     summary:
-      "The Patrol's tactical element, called in for high-risk situations that go beyond the scope of a standard patrol response.",
+      "Trained K-9 teams that support troopers with narcotics detection, suspect tracking and high-risk apprehensions.",
     duties:
-      "High-risk warrant service\nBarricaded subjects and hostage situations\nActive threat response\nDignitary and event security",
-    restricted: false,
+      "Narcotics detection on traffic stops\nTracking suspects who flee on foot\nArea and building searches\nSupport on high-risk calls",
+    commanderCallsign: 12,
   },
   {
     slug: "ciu",
@@ -270,17 +271,7 @@ const DIVISIONS = [
       "Specialists in detecting and stopping the movement of narcotics, weapons and contraband along the state's highways.",
     duties:
       "Highway drug and contraband interdiction\nAdvanced vehicle search techniques\nStolen vehicle recovery\nCriminal indicator recognition on traffic stops",
-    restricted: false,
-  },
-  {
-    slug: "psb",
-    name: "Human Resources",
-    abbreviation: "HR",
-    summary:
-      "The department's internal affairs office. HR investigates complaints against troopers and protects the integrity of the Patrol.",
-    duties:
-      "Investigation of public complaints\nInternal misconduct investigations\nPolicy compliance reviews\nRecommendations for corrective action",
-    restricted: true,
+    commanderCallsign: 11,
   },
 ];
 
@@ -296,14 +287,28 @@ export async function seedDefaults(client: Client) {
       );
     }
   }
+  await insertDivisions(client);
+  await client.query(`INSERT INTO meta (key, value) VALUES ('seeded_v1', 'true') ON CONFLICT DO NOTHING`);
+}
+
+async function insertDivisions(client: Client) {
   for (const [i, d] of DIVISIONS.entries()) {
     await client.query(
-      `INSERT INTO divisions (slug, name, abbreviation, summary, duties, commander, recruitment, restricted, sort_order)
-       VALUES ($1,$2,$3,$4,$5,NULL,'closed',$6,$7) ON CONFLICT (slug) DO NOTHING`,
-      [d.slug, d.name, d.abbreviation, d.summary, d.duties, d.restricted, i],
+      `INSERT INTO divisions (slug, name, abbreviation, summary, duties, commander, recruitment, restricted, sort_order, commander_callsign)
+       VALUES ($1,$2,$3,$4,$5,NULL,'handpicked',true,$6,$7) ON CONFLICT (slug) DO NOTHING`,
+      [d.slug, d.name, d.abbreviation, d.summary, d.duties, i, d.commanderCallsign],
     );
   }
-  await client.query(`INSERT INTO meta (key, value) VALUES ('seeded_v1', 'true') ON CONFLICT DO NOTHING`);
+}
+
+/** One-time: replace the old divisions with ADU, Internal Affairs, Canine and CIU (all handpicked). */
+export async function divisionsV2(client: Client) {
+  const claimed = await client.query(
+    `INSERT INTO meta (key, value) VALUES ('divisions_fhp_v2', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+  );
+  if (!claimed.length) return;
+  await client.query(`DELETE FROM divisions`);
+  await insertDivisions(client);
 }
 
 /**

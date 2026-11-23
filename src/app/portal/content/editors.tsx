@@ -87,11 +87,12 @@ export function DivisionEditor({ division: d }: { division: Division }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="field-label">Commander</label>
-          <input name="commander" className="field" defaultValue={d.commander ?? ""} placeholder="Leave blank for Vacant" />
+          <input name="commander" className="field" defaultValue={d.commander ?? ""} placeholder="Blank = taken from the roster" />
         </div>
         <div>
           <label className="field-label">Recruitment</label>
           <select name="recruitment" className="field" defaultValue={d.recruitment}>
+            <option value="handpicked">Handpicked</option>
             <option value="closed">Closed</option>
             <option value="open">Open</option>
           </select>

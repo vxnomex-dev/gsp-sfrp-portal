@@ -12,7 +12,7 @@ const features = [
   {
     icon: Siren,
     title: "Specialized Divisions",
-    body: "From the Nighthawks to the Special Response Team, our divisions give experienced troopers a place to specialize and lead.",
+    body: "From the Aggressive Driving Unit to the Canine Unit, our handpicked divisions give proven troopers a place to specialize and lead.",
     href: "/divisions",
   },
   {
@@ -23,13 +23,7 @@ const features = [
   },
 ];
 
-const divisionNames = [
-  "Nighthawks",
-  "Crime Suppression Unit",
-  "Special Response Team",
-  "Criminal Interdiction Unit",
-  "Human Resources",
-];
+const divisionNames = ["Aggressive Driving Unit", "Internal Affairs Division", "Canine Unit", "Criminal Interdiction Unit"];
 
 export default function HomePage() {
   return (
@@ -177,7 +171,7 @@ export default function HomePage() {
               View all divisions
             </Link>
           </div>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {divisionNames.map((n) => (
               <Link
                 key={n}

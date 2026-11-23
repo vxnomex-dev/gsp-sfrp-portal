@@ -18,8 +18,9 @@ export type Division = {
   summary: string;
   duties: string;
   commander: string | null;
-  recruitment: "open" | "closed";
+  recruitment: "open" | "closed" | "handpicked";
   restricted: boolean;
+  commander_callsign: number | null;
   sort_order: number;
 };
 
