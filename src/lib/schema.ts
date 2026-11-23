@@ -143,6 +143,29 @@ export const SCHEMA_SQL = [
   `CREATE INDEX IF NOT EXISTS notifications_created_idx ON notifications (created_at DESC)`,
   `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS discord_message_id TEXT`,
   `DROP TABLE IF EXISTS recordings`,
+  `CREATE TABLE IF NOT EXISTS deployments (
+    id SERIAL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    briefing BOOLEAN NOT NULL DEFAULT false,
+    host_id TEXT NOT NULL,
+    cohost_id TEXT,
+    starts_at TIMESTAMPTZ NOT NULL,
+    server_code TEXT,
+    notes TEXT,
+    channel_id TEXT,
+    message_id TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    ended_by TEXT,
+    ended_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS deployment_attendees (
+    deployment_id INTEGER NOT NULL REFERENCES deployments(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'attending',
+    responded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (deployment_id, user_id)
+  )`,
   `DELETE FROM meta WHERE key='recorder_heartbeat'`,
   `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
   `CREATE TABLE IF NOT EXISTS shifts (

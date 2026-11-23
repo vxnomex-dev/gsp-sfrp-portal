@@ -33,6 +33,7 @@ export const CHANNEL_SLOTS = {
   transcripts: { label: "Ticket transcripts", hint: "A copy of every closed ticket.", category: false },
   cadetDashboard: { label: "Cadet dashboard", hint: "Accepted applicants are told to read this channel.", category: false },
   loa: { label: "Leave of absence requests", hint: "Where LOA requests are posted with Approve / Deny.", category: false },
+  deployments: { label: "Deployments (optional)", hint: "Where /deployment posts. If not set, it posts in the channel the command is used in.", category: false },
   pressReleases: { label: "Press releases", hint: "Every press release published on the website is posted here.", category: false },
   shiftLogs: { label: "Shift logs (optional)", hint: "A short note whenever someone goes on or off duty.", category: false },
   ticketGeneral: { label: "General Support tickets", hint: "Category new General Support tickets open in.", category: true },

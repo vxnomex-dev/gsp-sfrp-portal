@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { verifyDiscordRequest, editInteractionOriginal, editInteractionResponse, ephemeralFollowup } from "@/lib/discord-bot";
 import { HANDBOOK_PREFIX, handbookSection, postAllHandbooks } from "@/lib/handbooks";
+import { DEP, deploymentButton, startDeployment } from "@/lib/deployments";
 import {
   ACCEPT_PREFIX,
   DENY_PREFIX,
@@ -231,6 +232,19 @@ export async function POST(req: NextRequest) {
           return json(privateReply(await postVerifyPanel(channelId)));
         case "verify":
           return verifyLater(i);
+        case "deployment":
+          return json(
+            await startDeployment({
+              member: i.member,
+              channelId,
+              kind: option(i, "type") ?? "deployment",
+              briefing: option(i, "briefing") === "true",
+              startsIn: Number(option(i, "starts_in") ?? 0),
+              cohost: option(i, "cohost"),
+              serverCode: option(i, "server_code"),
+              notes: option(i, "notes"),
+            }),
+          );
         case "handbook":
           after(async () => {
             const lines = await postAllHandbooks();
@@ -355,6 +369,7 @@ export async function POST(req: NextRequest) {
     // Verification panel: Verify / Check again
     if (i.type === 3 && cid === VERIFY_ID) return verifyLater(i);
     if (i.type === 3 && cid.startsWith(HANDBOOK_PREFIX)) return json(handbookSection(cid));
+    if (i.type === 3 && Object.values(DEP).some((p) => cid.startsWith(p))) return json(await deploymentButton(cid, i.member));
     if (i.type === 3 && cid.startsWith(VERIFY_CHECK_PREFIX)) {
       const member = i.member;
       after(() => checkVerify(i.token, member, cid.slice(VERIFY_CHECK_PREFIX.length)).catch((e) => console.error("[verify] check failed", e)));

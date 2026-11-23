@@ -256,6 +256,7 @@ export async function registerDiscordCommands(): Promise<FormState> {
   const { SHIFT_COMMANDS } = await import("@/lib/shift-commands");
   const { VERIFY_COMMANDS } = await import("@/lib/verify");
   const { HANDBOOK_COMMANDS, postAllHandbooks } = await import("@/lib/handbooks");
+  const { DEPLOYMENT_COMMANDS } = await import("@/lib/deployments");
   try {
     const result = await registerGuildCommands([
       ...SLASH_COMMANDS,
@@ -263,6 +264,7 @@ export async function registerDiscordCommands(): Promise<FormState> {
       ...SHIFT_COMMANDS,
       ...VERIFY_COMMANDS,
       ...HANDBOOK_COMMANDS,
+      ...DEPLOYMENT_COMMANDS,
     ]);
     // Make sure the division handbooks are posted (or updated) in their channels
     const handbooks = await postAllHandbooks();
