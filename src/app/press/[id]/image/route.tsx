@@ -18,7 +18,8 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/press/[id]/image
   ]);
   const doc = toPressDoc(n);
 
-  const seal = `data:image/png;base64,${Buffer.from(await fetch(`${origin}/images/fhp-seal.png`).then((r) => r.arrayBuffer())).toString("base64")}`;
+  const sealBytes = (await (await fetch(`${origin}/images/fhp-seal.png`)).arrayBuffer()) as ArrayBuffer;
+  const seal = `data:image/png;base64,${Buffer.from(sealBytes).toString("base64")}`;
   return new ImageResponse(<PressDocument doc={doc} sealUrl={seal} />, {
     width: 1240,
     height: pressImageHeight(doc),
