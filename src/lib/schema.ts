@@ -141,6 +141,8 @@ export const SCHEMA_SQL = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS notifications_created_idx ON notifications (created_at DESC)`,
+  `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS discord_message_id TEXT`,
+  `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`,
   `CREATE TABLE IF NOT EXISTS shifts (
     id SERIAL PRIMARY KEY,
     user_id TEXT NOT NULL,

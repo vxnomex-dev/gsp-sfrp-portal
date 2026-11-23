@@ -313,8 +313,13 @@ export async function publishNotification(_: FormState, fd: FormData): Promise<F
   const values = formValues(fd);
   const viewer = await getViewer();
   if (!viewer) return { message: "Your session expired. Please log in again.", values };
-  const { NOTIFICATION_KINDS, ALERT_TYPES, createNotification, sendNotificationDMs } = await import("@/lib/notifications");
-  const kind = values.kind as keyof typeof NOTIFICATION_KINDS;
+  const { NOTIFICATION_KINDS, ALERT_TYPES, createNotification, sendNotificationDMs, getNotification, updateNotification } = await import(
+    "@/lib/notifications"
+  );
+  const editId = Number(values.id) || 0;
+  const existing = editId ? await getNotification(editId) : null;
+  if (editId && !existing) return { message: "That release no longer exists.", values };
+  const kind = (existing?.kind ?? values.kind) as keyof typeof NOTIFICATION_KINDS;
   const meta = NOTIFICATION_KINDS[kind];
   if (!meta) return { message: "Pick what you're publishing.", values };
   if (!viewer.can(meta.permission)) return { message: `You don't have permission to publish ${meta.plural.toLowerCase()}.`, values };
@@ -330,9 +335,25 @@ export async function publishNotification(_: FormState, fd: FormData): Promise<F
   if (body.length > 3000) errors.body = "Keep it under 3,000 characters.";
   if (Object.keys(errors).length) return { errors, values };
 
+  const { after } = await import("next/server");
+  const { postPressRelease } = await import("@/lib/press");
+
+  if (existing) {
+    await updateNotification(existing.id, { alertType, title, body });
+    if (kind === "press") {
+      after(() => postPressRelease(existing.id).catch((e) => console.error("[press] Discord update failed", e)));
+    }
+    refresh();
+    return {
+      ok: true,
+      ref: String(existing.id),
+      message: `Changes saved.${kind === "press" ? " The post in the press channel is being updated." : ""}`,
+    };
+  }
+
   const n = await createNotification({ kind, alertType, title, body, authorId: viewer.uid, authorName: viewer.displayName });
+  if (kind === "press") after(() => postPressRelease(n.id).catch((e) => console.error("[press] Discord post failed", e)));
   if (values.send_dms === "on") {
-    const { after } = await import("next/server");
     after(() => sendNotificationDMs(n).catch((e) => console.error("[notifications] DMs failed", e)));
   } else {
     await query(`UPDATE notifications SET dm_done=true WHERE id=$1`, [n.id]);
@@ -341,7 +362,7 @@ export async function publishNotification(_: FormState, fd: FormData): Promise<F
   return {
     ok: true,
     ref: String(n.id),
-    message: `${meta.label} published.${values.send_dms === "on" ? " DMs to subscribers are going out now." : ""}`,
+    message: `${meta.label} published.${kind === "press" ? " It's being posted in the press channel." : ""}${values.send_dms === "on" ? " DMs to subscribers are going out now." : ""}`,
   };
 }
 
@@ -349,9 +370,16 @@ export async function removeNotification(fd: FormData) {
   const viewer = await getViewer();
   const { NOTIFICATION_KINDS, deleteNotification } = await import("@/lib/notifications");
   const id = Number(fd.get("id"));
-  const row = await queryOne<{ kind: keyof typeof NOTIFICATION_KINDS }>(`SELECT kind FROM notifications WHERE id=$1`, [id]);
+  const row = await queryOne<{ kind: keyof typeof NOTIFICATION_KINDS; discord_message_id: string | null }>(
+    `SELECT kind, discord_message_id FROM notifications WHERE id=$1`,
+    [id],
+  );
   if (!viewer || !row || !viewer.can(NOTIFICATION_KINDS[row.kind].permission)) throw new Error("You do not have permission to do that.");
   await deleteNotification(id);
+  if (row.kind === "press" && row.discord_message_id) {
+    const { deletePressPost } = await import("@/lib/press");
+    await deletePressPost(row.discord_message_id);
+  }
   refresh();
 }
 

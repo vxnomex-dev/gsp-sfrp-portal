@@ -63,6 +63,8 @@ export type Notification = {
   dm_failed: number;
   dm_done: boolean;
   created_at: string | Date;
+  updated_at?: string | Date | null;
+  discord_message_id?: string | null;
 };
 
 /** The badge shown on a notification, e.g. "Amber Alert" or "Press Release". */
@@ -143,11 +145,23 @@ export async function createNotification(n: {
   ))!;
 }
 
+export const getNotification = (id: number) =>
+  Number.isInteger(id) && id > 0 ? queryOne<Notification>(`SELECT * FROM notifications WHERE id=$1`, [id]) : Promise.resolve(null);
+
+export async function updateNotification(id: number, n: { alertType: AlertType | null; title: string; body: string }) {
+  return queryOne<Notification>(
+    `UPDATE notifications SET alert_type=CASE WHEN kind='alert' THEN $2 ELSE NULL END, title=$3, body=$4, updated_at=now()
+     WHERE id=$1 RETURNING *`,
+    [id, n.alertType, n.title, n.body],
+  );
+}
+
 export async function deleteNotification(id: number) {
   await query(`DELETE FROM notifications WHERE id=$1`, [id]);
 }
 
-export const notificationUrl = (id: number) => `${env.baseUrl}/notifications#n-${id}`;
+export const notificationUrl = (id: number, kind?: NotificationKind) =>
+  kind === "press" ? `${env.baseUrl}/press/${id}` : `${env.baseUrl}/notifications#n-${id}`;
 
 function notificationDM(n: Notification): Component[] {
   const t = unix(new Date(n.created_at));
@@ -157,7 +171,7 @@ function notificationDM(n: Notification): Component[] {
       text(`### ${clean(badgeFor(n), 60)}\n**${clean(n.title, 200)}**`),
       text(clean(n.body, 3000)),
       text(`-# Issued by ${meta.issuer} on <t:${t}:D> at <t:${t}:t>.`),
-      { type: 1, components: [{ type: 2, style: 5, label: "View on website", url: notificationUrl(n.id) }] },
+      { type: 1, components: [{ type: 2, style: 5, label: "View on website", url: notificationUrl(n.id, n.kind) }] },
       text(`-# You're receiving this because you turned on ${meta.plural} DMs at ${clean(site.name, 60)}. Change this on your profile.`),
       divider(),
     ]),

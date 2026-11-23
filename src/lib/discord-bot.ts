@@ -65,6 +65,10 @@ export function editChannelMessage(channelId: string, messageId: string, msg: V2
   });
 }
 
+export function deleteChannelMessage(channelId: string, messageId: string) {
+  return bot(`/channels/${channelId}/messages/${messageId}`, { method: "DELETE" });
+}
+
 export type FileUpload = { name: string; data: string; contentType: string };
 
 /** Posts a Components V2 message with a file attached (reference it with a File component: attachment://name). */

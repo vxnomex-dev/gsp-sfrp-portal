@@ -86,7 +86,14 @@ async function Feed({ searchParams }: { searchParams: PageProps<"/notifications"
                   <div className="px-6 py-5">
                     <h2 className="text-2xl font-semibold uppercase leading-tight text-navy-ink">{n.title}</h2>
                     <p className="mt-3 whitespace-pre-line text-[1.02rem] leading-relaxed">{n.body}</p>
-                    <p className="mt-4 text-sm text-muted-foreground">Issued by {NOTIFICATION_KINDS[n.kind].issuer}</p>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm text-muted-foreground">Issued by {NOTIFICATION_KINDS[n.kind].issuer}</p>
+                      {n.kind === "press" && (
+                        <Link href={`/press/${n.id}`} className="btn btn-navy !px-3 !py-1.5 text-xs">
+                          Read the full release
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </article>
               );

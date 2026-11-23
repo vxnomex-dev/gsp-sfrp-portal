@@ -8,21 +8,28 @@ import { Alert, Checkbox, SubmitButton, TextArea, TextField } from "@/components
 
 const icons = { alert: Siren, press: Megaphone, info: Info } as Record<string, typeof Siren>;
 
+type Editing = { id: number; kind: string; alert_type: string; title: string; body: string };
+
 export function ComposeForm({
-  kinds,
+  kinds: allKinds,
   alertTypes,
+  editing,
 }: {
   kinds: { key: string; label: string; blurb: string }[];
   alertTypes: { key: string; label: string }[];
+  editing: Editing | null;
 }) {
   const [state, action] = useActionState<FormState, FormData>(publishNotification, {});
-  const [kind, setKind] = useState(state.values?.kind ?? kinds[0]?.key ?? "");
-  const v = state.ok ? {} : (state.values ?? {});
+  const kinds = editing ? allKinds.filter((k) => k.key === editing.kind) : allKinds;
+  const [kind, setKind] = useState(state.values?.kind ?? editing?.kind ?? kinds[0]?.key ?? "");
+  const start: Record<string, string> = editing ? { title: editing.title, body: editing.body, alert_type: editing.alert_type } : {};
+  const v = state.ok && !editing ? {} : { ...start, ...(state.values ?? {}) };
   const e = state.errors ?? {};
 
   return (
     // A new key after publishing clears the form
-    <form key={state.ok ? `done-${state.ref}` : "form"} action={action} className="space-y-5">
+    <form key={state.ok && !editing ? `done-${state.ref}` : "form"} action={action} className="space-y-5">
+      {editing && <input type="hidden" name="id" value={editing.id} />}
       <div>
         <div className="field-label">What are you publishing?</div>
         <div className={`grid gap-3 ${kinds.length > 1 ? "sm:grid-cols-3" : ""}`}>
@@ -71,23 +78,31 @@ export function ComposeForm({
         maxLength={150}
         defaultValue={v.title}
         error={e.title}
-        placeholder={kind === "alert" ? "e.g. Missing 8-year-old last seen near Springfield Ave" : kind === "press" ? "e.g. Troopers arrest suspect after I-85 pursuit" : "e.g. Mandatory department meeting Saturday"}
+        placeholder={kind === "alert" ? "e.g. Missing 8-year-old last seen near Springfield Ave" : kind === "press" ? "e.g. Update: Felony Speeding Arrest on Freedom Avenue" : "e.g. Mandatory department meeting Saturday"}
       />
       <TextArea
         name="body"
         label="Details"
         required
-        rows={8}
+        rows={kind === "press" ? 14 : 8}
         maxLength={3000}
         defaultValue={v.body}
         error={e.body}
-        hint={kind === "alert" ? "Include descriptions, vehicle and plate, last known location, and what the public should do." : undefined}
+        hint={
+          kind === "alert"
+            ? "Include descriptions, vehicle and plate, last known location, and what the public should do."
+            : kind === "press"
+              ? "Start with a greeting (e.g. “Hello to the citizens of Florida,”) and leave a blank line between paragraphs. It's laid out as an official release, signed by you as PIO, and posted in the press channel on Discord."
+              : undefined
+        }
       />
-      <Checkbox name="send_dms" label="DM everyone who subscribed to this type" defaultChecked={v.send_dms ? v.send_dms === "on" : true} />
+      {!editing && (
+        <Checkbox name="send_dms" label="DM everyone who subscribed to this type" defaultChecked={v.send_dms ? v.send_dms === "on" : true} />
+      )}
 
       <div className="flex flex-wrap items-center gap-4">
-        <SubmitButton className={kind === "alert" ? "btn btn-danger" : "btn btn-navy"} pendingText="Publishing…">
-          {kind === "alert" ? "Issue alert" : "Publish"}
+        <SubmitButton className={kind === "alert" ? "btn btn-danger" : "btn btn-navy"} pendingText={editing ? "Saving…" : "Publishing…"}>
+          {editing ? "Save changes" : kind === "alert" ? "Issue alert" : "Publish"}
         </SubmitButton>
         {state.message && <Alert tone={state.ok ? "success" : "error"}>{state.message}</Alert>}
       </div>
