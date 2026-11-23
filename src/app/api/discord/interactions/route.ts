@@ -39,6 +39,15 @@ import {
 import { resolveAccess } from "@/lib/permissions";
 import { getConfig } from "@/lib/config";
 import { appRef } from "@/lib/forms";
+import {
+  LOA_FORM_MODAL,
+  checkLoaDecider,
+  decideLoaFromDiscord,
+  loaFormModal,
+  shiftCommand,
+  submitLoaFromDiscord,
+} from "@/lib/shift-commands";
+import { LOA_APPROVE, LOA_DENY, LOA_DENY_INPUT, LOA_DENY_MODAL, loaDenyModal, loaMessage } from "@/lib/loa";
 
 /**
  * Discord sends button clicks, menu choices, pop-up submissions and slash commands here.
@@ -208,6 +217,11 @@ export async function POST(req: NextRequest) {
         case "support-panel":
           return json(await postPanel(channelId));
 
+        case "shift":
+          return json(await shiftCommand(i.member, subOptions(i)?.name ?? "", subOption(i, "user")));
+        case "loa":
+          return json(loaFormModal());
+
         case "promote": {
           if (!(await canPromote(i.member))) {
             return ephemeral("You don't have permission to use `/promote`. Only Command, High Command and the Office of the Colonel can promote.");
@@ -286,6 +300,35 @@ export async function POST(req: NextRequest) {
         }),
       );
       return deferPrivate();
+    }
+
+    // Leave of absence: form submitted (from /loa)
+    if (i.type === 5 && cid === LOA_FORM_MODAL) {
+      const member = i.member;
+      const [start, end, reason] = [modalValue(i, "start"), modalValue(i, "end"), modalValue(i, "reason")];
+      after(async () => {
+        const msg = await submitLoaFromDiscord(member, start, end, reason).catch(() => "Something went wrong. Please try again.");
+        await ephemeralFollowup(i.token, msg).catch(() => {});
+      });
+      return deferPrivate();
+    }
+
+    // Leave of absence: Approve / Deny
+    if ((i.type === 3 || i.type === 5) && [LOA_APPROVE, LOA_DENY, LOA_DENY_MODAL].some((p) => cid.startsWith(p))) {
+      const id = Number(cid.slice(cid.indexOf(":") + 1));
+      const problem = await checkLoaDecider(i.member, id);
+      if (problem) return ephemeral(problem);
+      if (i.type === 3 && cid.startsWith(LOA_DENY)) return json(loaDenyModal(id));
+      const status = cid.startsWith(LOA_APPROVE) ? "approved" : "denied";
+      const reason = status === "denied" ? modalValue(i, LOA_DENY_INPUT).trim().slice(0, 400) || null : null;
+      const member = i.member;
+      after(async () => {
+        const r = await decideLoaFromDiscord(member, id, status, reason).catch(() => null);
+        if (!r) return void (await ephemeralFollowup(i.token, "That request was already decided.").catch(() => {}));
+        await editInteractionOriginal(i.token, { components: loaMessage(r.loa) }).catch(() => {});
+        if (!r.dmSent) await ephemeralFollowup(i.token, `Saved, but I couldn't DM <@${r.loa.user_id}>.`).catch(() => {});
+      });
+      return json({ type: 6 });
     }
 
     // Support panel: support type picked → show the "What's up?" pop-up

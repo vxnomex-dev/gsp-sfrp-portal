@@ -35,12 +35,13 @@ type Rank = { key: string; label: string; tier: TierKey; block: readonly [number
 export const RANKS = [
   { key: "colonel", label: "Colonel", tier: "ootc", block: [1, 1], name: "colonel" },
   { key: "ltcol", label: "Lieutenant Colonel", tier: "ootc", block: [2, 3], name: "lieutenant colonel" },
-  { key: "major", label: "Major", tier: "command", block: [4, 6], name: "major" },
-  { key: "captain", label: "Captain", tier: "command", block: [7, 12], name: "captain" },
-  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [13, 18], name: "lieutenant" },
-  // Troopers and Probationary Troopers share C-50–C-99 (finishing probation keeps the number)
+  { key: "major", label: "Major", tier: "command", block: [4, 5], name: "major" },
+  { key: "captain", label: "Captain", tier: "command", block: [6, 8], name: "captain" },
+  // C-11–C-13 are the division commanders
+  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [10, 13], name: "lieutenant" },
   { key: "sgt", label: "Sergeant", tier: "supervisors", block: [19, 34], name: "sergeant" },
   { key: "cpl", label: "Corporal", tier: "supervisors", block: [35, 49], name: "corporal" },
+  // Troopers and Probationary Troopers share C-50–C-99 (finishing probation keeps the number)
   { key: "tpr", label: "Trooper", tier: "patrol", block: [50, 99], name: "trooper" },
   { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [50, 99], name: "probationary trooper" },
 ] as const satisfies readonly Rank[];
@@ -96,7 +97,17 @@ async function setMeta(key: string, value: unknown) {
  */
 export type Assignments = { slots: Record<string, string>; ranks: Partial<Record<RankKey, string>> };
 const DEFAULT_ASSIGNMENTS: Assignments = {
-  slots: { "1": "Commanding Officer", "2": "Deputy Commander", "3": "Deputy Commander" },
+  slots: {
+    "1": "Commanding Officer",
+    "2": "Deputy Commander",
+    "3": "Deputy Commander",
+    "6": "Patrol Command",
+    "7": "Patrol Command",
+    "8": "Patrol Command",
+    "11": "Division Commander",
+    "12": "Division Commander",
+    "13": "Division Commander",
+  },
   ranks: {},
 };
 

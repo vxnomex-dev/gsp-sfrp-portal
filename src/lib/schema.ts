@@ -141,6 +141,35 @@ export const SCHEMA_SQL = [
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS notifications_created_idx ON notifications (created_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS shifts (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ended_at TIMESTAMPTZ,
+    ended_by_id TEXT,
+    ended_by_name TEXT
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS shifts_one_active ON shifts (user_id) WHERE ended_at IS NULL`,
+  `CREATE INDEX IF NOT EXISTS shifts_user_idx ON shifts (user_id)`,
+  `CREATE TABLE IF NOT EXISTS loa_requests (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    decided_by_id TEXT,
+    decided_by_name TEXT,
+    decision_reason TEXT,
+    decided_at TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ,
+    role_given BOOLEAN NOT NULL DEFAULT false,
+    channel_id TEXT,
+    message_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
   `CREATE TABLE IF NOT EXISTS user_prefs (
     user_id TEXT PRIMARY KEY,
     username TEXT,

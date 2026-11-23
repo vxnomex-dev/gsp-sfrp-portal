@@ -17,6 +17,7 @@ export const ROLE_SLOTS = {
   hr: { label: "Human Resources", hint: "Sees trooper reports and issues infractions." },
   press: { label: "Press Release Team", hint: "Publishes press releases." },
   communityMember: { label: "Community Member", hint: "The only role kept when someone is terminated." },
+  loa: { label: "Leave of Absence", hint: "Given while someone's leave is approved, removed when it ends." },
   applicationsPing: { label: "Ping for new applications", hint: "Pinged when a cadet application comes in." },
   reportsPing: { label: "Ping for trooper reports", hint: "Pinged when someone reports a trooper." },
 } as const;
@@ -29,6 +30,8 @@ export const CHANNEL_SLOTS = {
   infractions: { label: "Infractions", hint: "Where /infraction notices go.", category: false },
   transcripts: { label: "Ticket transcripts", hint: "A copy of every closed ticket.", category: false },
   cadetDashboard: { label: "Cadet dashboard", hint: "Accepted applicants are told to read this channel.", category: false },
+  loa: { label: "Leave of absence requests", hint: "Where LOA requests are posted with Approve / Deny.", category: false },
+  shiftLogs: { label: "Shift logs (optional)", hint: "A short note whenever someone goes on or off duty.", category: false },
   ticketGeneral: { label: "General Support tickets", hint: "Category new General Support tickets open in.", category: true },
   ticketDivisional: { label: "Divisional Support tickets", hint: "Category for Divisional Support tickets.", category: true },
   ticketCommand: { label: "Command Support tickets", hint: "Category for Command Support tickets.", category: true },
@@ -68,6 +71,8 @@ export async function getConfig(): Promise<DiscordConfig> {
     roles: { ...EMPTY_CONFIG.roles, ...(saved.roles ?? {}) },
     channels: { ...EMPTY_CONFIG.channels, ...(saved.channels ?? {}) },
   };
+  // Default LOA channel for the Florida Highway Patrol server until one is picked in Discord Setup
+  if (!cfg.channels.loa && cfg.guildId) cfg.channels.loa = "1574221084390064188";
   cache = { at: Date.now(), cfg };
   return cfg;
 }

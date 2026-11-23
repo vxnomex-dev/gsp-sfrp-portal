@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Car, Megaphone, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
+import { Car, Megaphone, Timer, CalendarOff, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
 import { guard } from "./guard";
 import { getCounts } from "@/lib/data";
 import { avatarUrl } from "@/lib/discord";
@@ -20,6 +20,18 @@ async function Dashboard() {
   const counts = await getCounts();
 
   const tiles = [
+    {
+      href: "/portal/shifts",
+      icon: Timer,
+      title: "Shifts",
+      body: viewer.can("shifts") ? "Go on duty, see your time, and manage the department's shifts." : "Go on and off duty and see your shift time.",
+    },
+    {
+      href: "/portal/loa",
+      icon: CalendarOff,
+      title: "Leave of Absence",
+      body: viewer.can("shifts") ? "Request leave, and approve or deny requests." : "Request time away from the department.",
+    },
     {
       href: "/department",
       icon: Car,
@@ -52,7 +64,7 @@ async function Dashboard() {
       href: "/portal/content",
       icon: PencilRuler,
       title: "Website Content",
-      body: "Edit command staff and division commanders.",
+      body: "Edit division pages (Command Staff now comes from Discord).",
     },
     viewer.can("content") && {
       href: "/portal/roster",

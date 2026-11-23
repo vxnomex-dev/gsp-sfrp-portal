@@ -248,11 +248,12 @@ export async function registerDiscordCommands(): Promise<FormState> {
   const { registerGuildCommands } = await import("@/lib/discord-bot");
   const { SLASH_COMMANDS } = await import("@/lib/tickets");
   const { DISCIPLINE_COMMANDS } = await import("@/lib/discipline");
+  const { SHIFT_COMMANDS } = await import("@/lib/shift-commands");
   try {
-    const result = await registerGuildCommands([...SLASH_COMMANDS, ...DISCIPLINE_COMMANDS]);
+    const result = await registerGuildCommands([...SLASH_COMMANDS, ...DISCIPLINE_COMMANDS, ...SHIFT_COMMANDS]);
     return {
       ok: true,
-      message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /rename, /support-panel, /promote, /infraction.`,
+      message: `Registered ${result.length} slash commands: /claim, /close, /close-request, /rename, /support-panel, /promote, /infraction, /shift, /loa.`,
     };
   } catch (e) {
     return { message: `Discord rejected the request: ${(e as Error).message}` };
@@ -468,4 +469,100 @@ export async function changeCallsign(_: FormState, fd: FormData): Promise<FormSt
   } catch (e) {
     return { message: (e as Error).message };
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Shifts & leave of absence                                           */
+/* ------------------------------------------------------------------ */
+
+export async function toggleMyShift(): Promise<FormState> {
+  const viewer = await requirePermission("portal");
+  const { activeShift, endShift, startShift } = await import("@/lib/shifts");
+  const r = (await activeShift(viewer.uid)) ? await endShift(viewer.uid) : await startShift(viewer.uid, viewer.displayName);
+  refresh();
+  if (!r.ok) return { message: r.message };
+  return { ok: true, message: "length" in r ? `You're off duty. That shift was ${r.length}.` : "You're on duty." };
+}
+
+/** Checks the viewer may manage these members (Office of the Colonel: everyone; others: ranked below them). */
+async function manageable(userIds: string[]) {
+  const viewer = await requirePermission("shifts");
+  const { managerScope } = await import("@/lib/shifts");
+  const { buildRoster } = await import("@/lib/roster");
+  const scope = (await managerScope(viewer))!;
+  const { entries } = await buildRoster();
+  const allowed = entries.filter((e) => userIds.includes(e.userId) && scope.canManage(e)).map((e) => e.userId);
+  return { viewer, allowed };
+}
+
+export async function managerEndShift(fd: FormData) {
+  const { viewer, allowed } = await manageable([String(fd.get("user") ?? "")]);
+  if (!allowed.length) throw new Error("You can only manage shifts of members ranked below you.");
+  const { endShift } = await import("@/lib/shifts");
+  await endShift(allowed[0], { id: viewer.uid, name: viewer.displayName });
+  refresh();
+}
+
+export async function managerWipeShifts(_: FormState, fd: FormData): Promise<FormState> {
+  const scopeAll = fd.get("scope") === "all";
+  if (scopeAll && String(fd.get("confirm") ?? "").trim().toUpperCase() !== "WIPE") return { message: "Type WIPE to confirm." };
+  const { buildRoster } = await import("@/lib/roster");
+  const ids = scopeAll ? (await buildRoster()).entries.map((e) => e.userId) : [String(fd.get("user") ?? "")];
+  const { allowed } = await manageable(ids);
+  if (!allowed.length) return { message: "You can only wipe shifts of members ranked below you." };
+  const { wipeShifts } = await import("@/lib/shifts");
+  await wipeShifts(allowed);
+  refresh();
+  return { ok: true, message: `Shift time wiped for ${allowed.length} member${allowed.length === 1 ? "" : "s"}.` };
+}
+
+export async function requestLoa(_: FormState, fd: FormData): Promise<FormState> {
+  const viewer = await requirePermission("portal");
+  const values = formValues(fd);
+  const { validateLoa } = await import("@/lib/shift-commands");
+  const { createLoa } = await import("@/lib/loa");
+  const start = values.start || null;
+  const end = values.end || null;
+  const reason = (values.reason ?? "").trim();
+  const err = validateLoa(start, end, reason);
+  if (err) return { message: err, values };
+  const r = await createLoa({ id: viewer.uid, name: viewer.displayName }, start!, end!, reason.slice(0, 1000));
+  refresh();
+  return {
+    ok: true,
+    ref: String(r.loa.id),
+    message: r.posted
+      ? "Request sent. Supervisors will review it and you'll get a DM with the decision."
+      : "Request saved, but it couldn't be posted to Discord — let a supervisor know.",
+  };
+}
+
+async function loaManager(id: number) {
+  const { getLoa } = await import("@/lib/loa");
+  const l = await getLoa(id);
+  if (!l) throw new Error("That request no longer exists.");
+  const { viewer, allowed } = await manageable([l.user_id]);
+  if (!allowed.length) throw new Error("You can only manage leave for members ranked below you.");
+  return { viewer, loa: l };
+}
+
+export async function decideLoaWeb(fd: FormData) {
+  const id = Number(fd.get("id"));
+  const status = fd.get("status") === "approved" ? "approved" : "denied";
+  const { viewer } = await loaManager(id);
+  const { decideLoa } = await import("@/lib/loa");
+  await decideLoa(id, status, { id: viewer.uid, name: viewer.displayName }, String(fd.get("reason") ?? "").trim().slice(0, 400) || null);
+  refresh();
+}
+
+export async function endLoaWeb(fd: FormData) {
+  const id = Number(fd.get("id"));
+  const viewer = await requirePermission("portal");
+  const { getLoa, endLoa } = await import("@/lib/loa");
+  const l = await getLoa(id);
+  if (!l) throw new Error("That request no longer exists.");
+  // Members can cancel / end their own leave; managers can end leave for members below them
+  if (l.user_id !== viewer.uid) await loaManager(id);
+  await endLoa(id, { id: viewer.uid, name: viewer.displayName });
+  refresh();
 }

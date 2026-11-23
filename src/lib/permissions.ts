@@ -9,9 +9,10 @@ export type Permission =
   | "alerts" // publish statewide alerts (Office of the Colonel)
   | "press" // publish press releases (Press Release Team + Office of the Colonel)
   | "notices" // publish important info to department personnel (Office of the Colonel + High Command)
+  | "shifts" // manage other members' shifts and leave requests (Office of the Colonel + supervisory staff)
   | "setup"; // Discord Setup: choose the server, roles and channels (bot owner, server admins, Office of the Colonel)
 
-export const ALL_PERMISSIONS: Permission[] = ["portal", "applications", "content", "reports", "alerts", "press", "notices", "setup"];
+export const ALL_PERMISSIONS: Permission[] = ["portal", "applications", "content", "reports", "alerts", "press", "notices", "shifts", "setup"];
 
 export type Access = {
   permissions: Permission[];
@@ -30,12 +31,13 @@ export function resolveAccess(roleIds: string[], cfg: DiscordConfig): Access {
     labels.push("Office of the Colonel");
   }
   if (has(r.highCommand)) {
-    for (const p of ["portal", "applications", "content", "notices"] as const) perms.add(p);
+    for (const p of ["portal", "applications", "content", "notices", "shifts"] as const) perms.add(p);
     labels.push("High Command");
   }
   if (has(r.command)) {
     perms.add("portal");
     perms.add("applications");
+    perms.add("shifts");
     labels.push("Command");
   }
   // Reports are tied to Human Resources (and the Office of the Colonel) only.
@@ -44,6 +46,7 @@ export function resolveAccess(roleIds: string[], cfg: DiscordConfig): Access {
     perms.add("reports");
     labels.push("Human Resources");
   }
+  if (has(r.supervisor)) perms.add("shifts");
   if (has(r.supervisor, r.patrol, r.personnel)) {
     perms.add("portal");
     if (!labels.length) labels.push("Department Personnel");
