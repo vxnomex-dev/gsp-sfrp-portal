@@ -21,7 +21,12 @@ It stops on `/record stop`, when everyone has left for a minute, or after 4 hour
 | `DATABASE_URL` | The same database URL the website uses (Neon) |
 | `MAX_RECORDING_HOURS` | Optional, default `4` |
 
-## Run it
+## Run it on a Mac (free)
+Double-click **Start Recorder.command** (first time: right-click → Open, because it isn't from the App Store).
+It installs what it needs, asks once for the bot token and database URL, and keeps the Mac awake while the window is open.
+Start it before a recording; close it after `/record stop` has posted the files.
+
+## Run it 24/7
 **Railway / Render / Fly.io:** deploy this repository with the root directory set to `recorder` (it has a Dockerfile),
 add the variables above, and start it. One instance only.
 

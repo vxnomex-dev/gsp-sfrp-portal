@@ -28,7 +28,6 @@ import {
   type AudioReceiveStream,
   type VoiceConnection,
 } from "@discordjs/voice";
-import opus from "@discordjs/opus";
 import { heartbeat, q, recordingsChannelId, setStatus, type RecordingRow } from "./db.js";
 import { Track } from "./track.js";
 import { mixTracks, partSeconds, splitTrack } from "./encode.js";
@@ -38,6 +37,22 @@ if (!TOKEN) throw new Error("DISCORD_BOT_TOKEN is not set.");
 const MAX_HOURS = Number(process.env.MAX_RECORDING_HOURS || 4);
 const EMPTY_STOP_MS = 60_000;
 const IS_V2 = 1 << 15;
+
+/** Opus decoder: the fast native one if it installed, otherwise the pure-JavaScript one. */
+type Decoder = { decode(packet: Buffer): Buffer };
+const makeDecoder: () => Decoder = await (async () => {
+  try {
+    const { OpusEncoder } = (await import("@discordjs/opus")).default;
+    return () => new OpusEncoder(48_000, 2);
+  } catch {
+    const OpusScript = (await import("opusscript")).default;
+    console.log("[recorder] using the JavaScript Opus decoder");
+    return () => {
+      const o = new OpusScript(48_000, 2, OpusScript.Application.VOIP);
+      return { decode: (p: Buffer) => Buffer.from(o.decode(p)) };
+    };
+  }
+})();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 const sessions = new Map<number, Session>(); // by recording id
@@ -140,7 +155,7 @@ class Session {
       this.tracks.set(userId, track);
       const stream = this.connection.receiver.subscribe(userId, { end: { behavior: EndBehaviorType.Manual } });
       this.streams.push(stream);
-      const decoder = new opus.OpusEncoder(48_000, 2);
+      const decoder = makeDecoder();
       stream.on("data", (packet: Buffer) => {
         if (this.stopping) return;
         try {
@@ -337,5 +352,6 @@ async function shutdown() {
 }
 process.on("SIGTERM", () => void shutdown());
 process.on("SIGINT", () => void shutdown());
+process.on("SIGHUP", () => void shutdown()); // Terminal window closed
 
 await client.login(TOKEN);

@@ -45,3 +45,5 @@ next-env.d.ts
 
 # Voice recorder dependencies
 /recorder/node_modules
+
+/recorder/.env
