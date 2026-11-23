@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronLeft, Clock, Timer, Users } from "lucide-react";
+import { ChevronLeft, Clock, Timer, Trophy, Users } from "lucide-react";
 import { guard } from "../guard";
 import { fmtDate } from "@/lib/format";
 import { activeShift, completedSeconds, fmtDuration, managerScope, recentShifts, rosterWithShifts } from "@/lib/shifts";
@@ -30,7 +30,8 @@ async function Shifts() {
     recentShifts(viewer.uid, 8),
     managerScope(viewer),
   ]);
-  const board = scope ? await rosterWithShifts().catch(() => []) : [];
+  const board = await rosterWithShifts().catch(() => []);
+  const leaders = [...board].filter((m) => m.total > 0).sort((a, b) => b.total - a.total).slice(0, 10);
   const onDuty = board.filter((m) => m.activeSince);
 
   return (
@@ -104,6 +105,49 @@ async function Shifts() {
             </ul>
           )}
         </div>
+      </div>
+
+      {/* Leaderboard */}
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-navy px-6 py-3 text-white">
+          <h3 className="flex items-center gap-2 font-display text-xl uppercase">
+            <Trophy size={20} className="text-gold" /> Shift leaderboard
+          </h3>
+          <span className="text-xs text-white/70">Most time on duty since the last wipe</span>
+        </div>
+        {leaders.length === 0 ? (
+          <p className="px-6 py-6 text-sm text-muted-foreground">No shift time logged yet. Start a shift to get on the board.</p>
+        ) : (
+          <ol className="divide-y divide-border">
+            {leaders.map((m, i) => (
+              <li
+                key={m.userId}
+                className={`flex items-center gap-4 px-6 py-3 ${m.userId === viewer.uid ? "bg-gold/10" : ""}`}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-display ${
+                    i === 0 ? "bg-gold text-gold-foreground" : i < 3 ? "bg-navy text-white" : "bg-panel text-navy-ink"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold text-navy-ink">
+                    {m.callsignLabel && <span className="mr-2 font-display tracking-wider text-muted-foreground">{m.callsignLabel}</span>}
+                    {m.name}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {m.rankLabel} · {m.shifts} shift{m.shifts === 1 ? "" : "s"}
+                    {m.activeSince && <span className="ml-2 text-success">● On duty</span>}
+                  </div>
+                </div>
+                <div className="font-display text-lg text-navy-ink">
+                  {m.activeSince ? <LiveTimer since={m.activeSince} base={m.completed} /> : fmtDuration(m.total)}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       {/* Management */}

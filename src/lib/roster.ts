@@ -20,12 +20,20 @@ import {
 export const TIERS = [
   { key: "ootc", label: "Office of the Colonel", showVacancies: true },
   { key: "command", label: "Command", showVacancies: true },
-  { key: "supervisors", label: "Supervisors", showVacancies: false },
-  { key: "patrol", label: "Patrol", showVacancies: false },
+  { key: "supervisors", label: "Supervisors", showVacancies: true },
+  { key: "patrol", label: "Patrol", showVacancies: true },
 ] as const;
 export type TierKey = (typeof TIERS)[number]["key"];
 
-type Rank = { key: string; label: string; tier: TierKey; block: readonly [number, number]; name: string };
+type Rank = {
+  key: string;
+  label: string;
+  tier: TierKey;
+  block: readonly [number, number];
+  name: string;
+  /** false = don't list empty numbers as Vacant (for big blocks) */
+  vacancies?: boolean;
+};
 
 /**
  * Ranks top to bottom. ONLY roles named "𝐆𝐒𝐏 | <rank>" count (medals, keys, division ranks like "𝐍𝐇 | Corporal",
@@ -35,15 +43,14 @@ type Rank = { key: string; label: string; tier: TierKey; block: readonly [number
 export const RANKS = [
   { key: "colonel", label: "Colonel", tier: "ootc", block: [1, 1], name: "colonel" },
   { key: "ltcol", label: "Lieutenant Colonel", tier: "ootc", block: [2, 3], name: "lieutenant colonel" },
+  // Matches the FHP Main Database roster
   { key: "major", label: "Major", tier: "command", block: [4, 5], name: "major" },
   { key: "captain", label: "Captain", tier: "command", block: [6, 8], name: "captain" },
-  // C-11–C-13 are the division commanders
   { key: "lieutenant", label: "Lieutenant", tier: "command", block: [10, 13], name: "lieutenant" },
-  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [19, 34], name: "sergeant" },
-  { key: "cpl", label: "Corporal", tier: "supervisors", block: [35, 49], name: "corporal" },
-  // Troopers and Probationary Troopers share C-50–C-99 (finishing probation keeps the number)
-  { key: "tpr", label: "Trooper", tier: "patrol", block: [50, 99], name: "trooper" },
-  { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [50, 99], name: "probationary trooper" },
+  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [14, 17], name: "sergeant" },
+  { key: "cpl", label: "Corporal", tier: "supervisors", block: [18, 20], name: "corporal" },
+  { key: "tpr", label: "Trooper", tier: "patrol", block: [24, 30], name: "trooper" },
+  { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [310, 400], name: "probationary trooper", vacancies: false },
 ] as const satisfies readonly Rank[];
 export type RankKey = (typeof RANKS)[number]["key"];
 
@@ -135,7 +142,9 @@ export function assignmentFor(a: Assignments, rank: RankKey | null, callsign: nu
   return (callsign !== null ? a.slots[String(callsign)] : undefined) ?? (rank ? a.ranks[rank] : undefined);
 }
 /** Ranks whose assignments are set per callsign slot. */
-export const SLOT_RANKS = RANKS.filter((r) => TIERS.find((t) => t.key === r.tier)!.showVacancies);
+export const SLOT_RANKS = RANKS.filter(
+  (r) => TIERS.find((t) => t.key === r.tier)!.showVacancies && (r as Rank).vacancies !== false,
+);
 
 export type SyncReport = {
   at: string;
@@ -318,8 +327,64 @@ function explain(err: unknown) {
  * Makes everyone's callsign match their rank's block and sets nicknames to "C-07 | Name".
  * reissue = true clears all callsigns first, so everyone is numbered fresh within their block.
  */
+/** Callsigns and appointments from the FHP Main Database spreadsheet (applied once, then managed on the site). */
+const SHEET_CALLSIGNS: Record<string, number> = {
+  "363743801027592202": 1, // Colonel — Jeremy_C67
+  "1328906299697528832": 2, // Lt. Colonel — Donnie Vance
+  "305756136882307072": 3, // Lt. Colonel — Bo-Greet
+  "1400588799200727242": 5, // Major — Kyle Johnson
+  "761534295596204056": 6, // Captain — Patrick Callahan
+  "931956257236062228": 8, // Captain — Rachel Thomas
+  "1278512421958582415": 10, // Lieutenant — Wyatt Brooks
+  "903387599035588629": 11, // Lieutenant — Martin James
+  "787822949658132502": 12, // Lieutenant — John Sheinbeck (K-01)
+  "1240982789814358027": 14, // Sergeant — Jackson S Caine
+  "1152730210907725834": 15, // Sergeant — Landon Simmons
+  "1487207317958037554": 19, // Corporal — Jackson Basit
+  "1393281707398004868": 24, // Trooper — James Sanders
+  "1088464322977599498": 25, // Trooper — Leilani DeJesus
+  "417172974895104000": 29, // Trooper — Karen Killmore
+};
+const SHEET_APPOINTMENTS: Record<string, string> = {
+  "1": "Overall Department Operations",
+  "2": "Administrative & Personnel Operations",
+  "3": "Special & Patrol Operations",
+  "4": "Patrol Coordinator",
+  "5": "Administrative Coordinator / Special Operations Coordinator",
+  "6": "Patrol Operations Captain",
+  "7": "Administrative Operations Assistant",
+  "8": "Special Operations",
+  "10": "Patrol Lieutenant",
+  "11": "Criminal Interdiction Lieutenant",
+  "12": "Canine Unit Lieutenant",
+  "13": "Aggressive Driving Unit Lieutenant",
+  "14": "Field Supervisory Staff",
+  "15": "Criminal Interdiction Unit Sergeant",
+  "16": "Canine Unit Sergeant",
+  "17": "Aggressive Driving Unit Sergeant",
+  "18": "Field Training Staff",
+  "19": "Field Training Staff",
+  "20": "Field Training Staff",
+  "24": "Patrol Staff",
+  "25": "Patrol Staff",
+  "26": "Patrol Staff",
+  "27": "Patrol Staff",
+  "28": "Patrol Staff",
+  "29": "Patrol Staff",
+  "30": "Patrol Staff",
+};
+
+async function applySheetOnce() {
+  const done = await queryOne(`INSERT INTO meta (key, value) VALUES ('callsigns_sheet_v1', 'true') ON CONFLICT (key) DO NOTHING RETURNING key`);
+  if (!done) return;
+  await query(`DELETE FROM roster_callsigns`);
+  for (const [userId, n] of Object.entries(SHEET_CALLSIGNS)) await saveCallsign(userId, n);
+  await setMeta("roster_assignments", { slots: SHEET_APPOINTMENTS, ranks: { prob: "Patrol Staff" } });
+}
+
 export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> {
   if (!env.discord.botToken) throw new Error("DISCORD_BOT_TOKEN is not set.");
+  await applySheetOnce();
   if (!CALLSIGNS_READY) throw new Error("Callsigns are paused until the FHP ranks and C-## numbers are set up.");
   await setMeta("roster_sync_running", Date.now());
   try {

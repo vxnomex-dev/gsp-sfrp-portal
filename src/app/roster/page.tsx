@@ -51,7 +51,7 @@ async function Roster() {
     const rows: Row[] = [];
     for (const r of ranks) {
       const members = entries.filter((e) => e.rank === r.key);
-      if (tier.showVacancies) {
+      if (tier.showVacancies && (r as { vacancies?: boolean }).vacancies !== false) {
         // Every callsign in the block, filled or Vacant
         for (let n = r.block[0]; n <= r.block[1]; n++) {
           const e = members.find((m) => m.callsign === n) ?? null;

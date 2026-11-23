@@ -2,7 +2,7 @@ import "server-only";
 import { getConfig } from "./config";
 import { resolveAccess } from "./permissions";
 import { fetchGuildMember } from "./discord-bot";
-import { activeShift, endShift, fmtDuration, managerScope, startShift, totalSeconds } from "./shifts";
+import { activeShift, endShift, fmtDuration, managerScope, rosterWithShifts, startShift, totalSeconds } from "./shifts";
 import { LOA_DENY_INPUT, createLoa, decideLoa, endExpiredLoas, getLoa, loaDenyModal } from "./loa";
 import { rankForRoles } from "./roster";
 import { privateReply, type Member } from "./tickets";
@@ -39,6 +39,16 @@ export async function shiftCommand(member: Member, sub: string, targetId: string
       (active
         ? `${subject} **on duty** since <t:${Math.floor(new Date(active.started_at).getTime() / 1000)}:t> (<t:${Math.floor(new Date(active.started_at).getTime() / 1000)}:R>).`
         : `${subject} **off duty**.`) + `\nTotal shift time: **${fmtDuration(total)}**.`,
+    );
+  }
+  if (sub === "leaderboard") {
+    const board = (await rosterWithShifts()).filter((m) => m.total > 0).sort((a, b) => b.total - a.total).slice(0, 10);
+    if (!board.length) return privateReply("No shift time logged since the last wipe yet.");
+    return privateReply(
+      "**Shift leaderboard** (since the last wipe)\n" +
+        board
+          .map((m, i) => `**${i + 1}.** ${m.callsignLabel ? `${m.callsignLabel} ` : ""}<@${m.userId}> — ${fmtDuration(m.total)}${m.activeSince ? " (on duty)" : ""}`)
+          .join("\n"),
     );
   }
   if (sub === "force-end") {
@@ -153,6 +163,7 @@ export const SHIFT_COMMANDS = [
         description: "Your shift status and total time",
         options: [{ type: 6, name: "user", description: "Check someone else (supervisors only)", required: false }],
       },
+      { type: 1, name: "leaderboard", description: "Top 10 by shift time since the last wipe" },
       {
         type: 1,
         name: "force-end",
