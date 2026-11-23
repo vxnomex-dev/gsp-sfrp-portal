@@ -59,7 +59,6 @@ export function PressDocument({ doc, sealUrl, k = 1, padX = 110 }: { doc: PressD
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", fontSize: px(23), lineHeight: 1.45, marginTop: px(4) }}>
         <span style={{ fontWeight: 700 }}>Office of Public Affairs</span>
         <span>Florida Highway Patrol</span>
-        <span>Florida State Roleplay</span>
         <span>{doc.date}</span>
       </div>
 

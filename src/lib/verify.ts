@@ -65,7 +65,7 @@ function requiredMessage(s: DockSession, withCheck: boolean, note?: string) {
       [
         text(
           "## Verification Required\n" +
-            "Connect your Roblox account securely through Dock to unlock Florida State Roleplay.\n\n" +
+            "Connect your Roblox account securely through Dock to unlock Florida Highway Patrol.\n\n" +
             `**Session ID:** \`${s.id}\`\n**Expires:** <t:${expires}:R>` +
             (note ? `\n\n-# ${note}` : ""),
         ),
@@ -99,7 +99,7 @@ async function completeMessage(robloxId: string) {
   const p = await robloxProfile(robloxId);
   const body =
     "## Verification Complete\n" +
-    `Your Roblox account${p.name ? ` **${p.name}**` : ""} is verified and you now have access to Florida State Roleplay.`;
+    `Your Roblox account${p.name ? ` **${p.name}**` : ""} is verified and you now have access to Florida Highway Patrol.`;
   const top: Component = p.avatar
     ? { type: 9, components: [text(body)], accessory: { type: 11, media: { url: p.avatar } } }
     : text(body);
@@ -162,7 +162,7 @@ export async function runVerify(token: string, member: Member) {
   }
   const role = await civilianRole();
   if (role && member.roles.includes(role)) {
-    return editInteractionResponse(token, simple("Already Verified", "You're already verified and have access to Florida State Roleplay."));
+    return editInteractionResponse(token, simple("Already Verified", "You're already verified and have access to Florida Highway Patrol."));
   }
 
   let session: DockSession;
@@ -214,7 +214,7 @@ export function verifyPanel() {
       divider(),
       text(
         "## Verification\n" +
-          "Welcome to **Florida State Roleplay**. Before you can see the rest of the server, link your Roblox account so we know who you are in-game.\n\n" +
+          "Welcome to **Florida Highway Patrol**. Before you can see the rest of the server, link your Roblox account so we know who you are in-game.\n\n" +
           "Press **Verify** below and follow the link to connect your Roblox account securely through Dock. You'll get access as soon as you're done.",
       ),
       { type: 1, components: [{ type: 2, style: 2, label: "Verify", custom_id: VERIFY_ID }] },
