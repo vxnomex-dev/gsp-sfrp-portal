@@ -33,19 +33,20 @@ type Rank = { key: string; label: string; tier: TierKey; block: readonly [number
  * Command, empty numbers show on the roster as Vacant.
  */
 export const RANKS = [
-  { key: "colonel", label: "Colonel", tier: "ootc", block: [600, 600], name: "colonel" },
-  { key: "ltcol", label: "Lieutenant Colonel", tier: "ootc", block: [601, 602], name: "lieutenant colonel" },
-  { key: "major", label: "Major", tier: "command", block: [610, 612], name: "major" },
-  { key: "captain", label: "Captain", tier: "command", block: [620, 625], name: "captain" },
-  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [630, 635], name: "lieutenant" },
-  { key: "srsgt", label: "Senior Sergeant", tier: "supervisors", block: [700, 719], name: "senior sergeant" },
-  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [720, 749], name: "sergeant" },
-  { key: "cpl", label: "Corporal", tier: "supervisors", block: [750, 799], name: "corporal" },
-  { key: "mtpr", label: "Master Trooper", tier: "patrol", block: [800, 819], name: "master trooper" },
-  { key: "srtpr", label: "Senior Trooper", tier: "patrol", block: [820, 849], name: "senior trooper" },
-  { key: "tfc", label: "Trooper First Class", tier: "patrol", block: [850, 899], name: "trooper first class" },
-  { key: "tpr", label: "Trooper", tier: "patrol", block: [900, 959], name: "trooper" },
-  { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [960, 999], name: "probationary trooper" },
+  { key: "colonel", label: "Colonel", tier: "ootc", block: [1, 1], name: "colonel" },
+  { key: "ltcol", label: "Lieutenant Colonel", tier: "ootc", block: [2, 3], name: "lieutenant colonel" },
+  { key: "major", label: "Major", tier: "command", block: [4, 6], name: "major" },
+  { key: "captain", label: "Captain", tier: "command", block: [7, 12], name: "captain" },
+  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [13, 18], name: "lieutenant" },
+  // Sergeants share C-19–C-34; every trooper rank shares C-50–C-99 (a promotion inside the block keeps the number)
+  { key: "srsgt", label: "Senior Sergeant", tier: "supervisors", block: [19, 34], name: "senior sergeant" },
+  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [19, 34], name: "sergeant" },
+  { key: "cpl", label: "Corporal", tier: "supervisors", block: [35, 49], name: "corporal" },
+  { key: "mtpr", label: "Master Trooper", tier: "patrol", block: [50, 99], name: "master trooper" },
+  { key: "srtpr", label: "Senior Trooper", tier: "patrol", block: [50, 99], name: "senior trooper" },
+  { key: "tfc", label: "Trooper First Class", tier: "patrol", block: [50, 99], name: "trooper first class" },
+  { key: "tpr", label: "Trooper", tier: "patrol", block: [50, 99], name: "trooper" },
+  { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [50, 99], name: "probationary trooper" },
 ] as const satisfies readonly Rank[];
 export type RankKey = (typeof RANKS)[number]["key"];
 
@@ -98,13 +99,26 @@ async function setMeta(key: string, value: unknown) {
  */
 export type Assignments = { slots: Record<string, string>; ranks: Partial<Record<RankKey, string>> };
 const DEFAULT_ASSIGNMENTS: Assignments = {
-  slots: { "600": "Commanding Officer", "601": "Deputy Commander", "602": "Deputy Commander" },
+  slots: { "1": "Commanding Officer", "2": "Deputy Commander", "3": "Deputy Commander" },
   ranks: {},
 };
 
+/** Old 3-digit command callsigns (600–635) → their C-## position, so saved assignments follow the seat. */
+const OLD_SLOT: Record<string, number> = { "600": 1, "601": 2, "602": 3, "610": 4, "611": 5, "612": 6 };
+for (let i = 0; i < 6; i++) {
+  OLD_SLOT[String(620 + i)] = 7 + i;
+  OLD_SLOT[String(630 + i)] = 13 + i;
+}
+
 export async function getAssignments(): Promise<Assignments> {
   const a = await getMeta<Partial<Assignments>>("roster_assignments");
-  return a ? { slots: a.slots ?? {}, ranks: a.ranks ?? {} } : DEFAULT_ASSIGNMENTS;
+  if (!a) return DEFAULT_ASSIGNMENTS;
+  const slots: Record<string, string> = {};
+  for (const [k, v] of Object.entries(a.slots ?? {})) {
+    const n = Number(k) >= 100 ? OLD_SLOT[k] : Number(k);
+    if (n) slots[String(n)] = v;
+  }
+  return { slots, ranks: a.ranks ?? {} };
 }
 export async function saveAssignmentsData(a: Assignments) {
   await setMeta("roster_assignments", a);
@@ -159,11 +173,8 @@ export type RosterEntry = {
 /** A callsign at the front of a nickname: "C-07 | Name", "602 | Name", "602 I Name", "602 - Name", "602/Name"… */
 const CALLSIGN_PREFIX = /^\s*(?:C\s*-\s*\d{1,3}|\d{2,4})\s*(?:[|│¦\-–—:/\\]|\s[Il](?=\s))\s*/i;
 
-/**
- * Automatic callsigns and nicknames are paused until the FHP rank ladder and its C-## numbers are set in RANKS.
- * While paused nobody is renamed; the roster still lists everyone by rank.
- */
-export const CALLSIGNS_READY = false;
+/** Set to false to pause automatic callsigns and nickname changes (the roster still lists everyone by rank). */
+export const CALLSIGNS_READY = true;
 
 /** "602 | Ryan Callahan" → "Ryan Callahan" */
 export function baseName(m: GuildMember) {

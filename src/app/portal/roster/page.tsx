@@ -143,7 +143,7 @@ async function RosterSettings() {
                 <tr key={r.key} className="border-b border-border last:border-0">
                   <td className="py-2 pr-4 font-semibold text-navy-ink">{r.label}</td>
                   <td className="py-2 pr-4">{fmtCallsignRange(r.block[0], r.block[1])}</td>
-                  <td className="py-2 pr-4">{r.block[1] - r.block[0] + 1}</td>
+                  <td className="py-2 pr-4">{r.block[1] - r.block[0] + 1}{RANKS.some((o) => o.key !== r.key && o.block[0] === r.block[0]) ? " (shared)" : ""}</td>
                   <td className="py-2 pr-4">{counts.get(r.key) ?? 0}</td>
                   <td className="py-2">
                     {detected.get(r.key)?.join(", ") ?? <span className="text-destructive">not found</span>}
