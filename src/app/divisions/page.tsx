@@ -18,7 +18,12 @@ const icons: Record<string, LucideIcon> = {
 };
 
 /** Division logos in /public/images/divisions — shown instead of the icon once added. */
-const logos: Record<string, string> = {};
+const logos: Record<string, string> = {
+  adu: "/images/divisions/adu.png",
+  ia: "/images/divisions/ia.png",
+  canine: "/images/divisions/canine.png",
+  ciu: "/images/divisions/ciu.png",
+};
 
 export default function DivisionsPage() {
   return (
@@ -62,7 +67,7 @@ async function DivisionList() {
               <div className="flex items-center gap-4">
                 {logos[d.slug] ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logos[d.slug]} alt={`${d.name} logo`} className="h-20 w-20 shrink-0 object-contain" />
+                  <img src={logos[d.slug]} alt={`${d.name} logo`} className="h-24 w-24 shrink-0 object-contain drop-shadow-sm" />
                 ) : (
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm bg-navy text-gold">
                     <Icon size={28} />

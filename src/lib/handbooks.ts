@@ -1,7 +1,8 @@
 import "server-only";
 import { query, queryOne } from "./db";
 import { editChannelMessage, postChannelMessage } from "./discord-bot";
-import { IS_COMPONENTS_V2, container, divider, text, type Component } from "./components";
+import { IS_COMPONENTS_V2, container, divider, section, text, type Component } from "./components";
+import { env } from "./env";
 
 /**
  * Division handbooks: one main message per channel with a button for each topic.
@@ -10,10 +11,11 @@ import { IS_COMPONENTS_V2, container, divider, text, type Component } from "./co
  */
 
 type Section = { id: string; label: string; body: string };
-type Handbook = { title: string; channelId: string; intro: string; footer: string; sections: Section[] };
+type Handbook = { title: string; channelId: string; logo?: string; intro: string; footer: string; sections: Section[] };
 
 export const HANDBOOKS = {
   ia: {
+    logo: "/images/divisions/ia.png",
     title: "Internal Affairs Handbook",
     channelId: "1574197986450346005",
     intro:
@@ -150,6 +152,7 @@ export const HANDBOOKS = {
   },
 
   canine: {
+    logo: "/images/divisions/canine.png",
     title: "Canine Unit Handbook",
     channelId: "1565133881898704906",
     intro:
@@ -255,6 +258,7 @@ export const HANDBOOKS = {
   },
 
   ciu: {
+    logo: "/images/divisions/ciu.png",
     title: "Criminal Interdiction Unit Handbook",
     channelId: "1565136145250132049",
     intro:
@@ -372,7 +376,9 @@ function mainMessage(h: Handbook, key: string): Component[] {
   const perRow = buttons.length > 5 ? Math.ceil(buttons.length / 2) : buttons.length;
   const rows: Component[] = [];
   for (let i = 0; i < buttons.length; i += perRow) rows.push({ type: 1, components: buttons.slice(i, i + perRow) });
-  return [container([text(`## ${h.title}\n${h.intro}`), divider(), ...rows, divider(), text(`-# ${h.footer}`)])];
+  const intro = `## ${h.title}\n${h.intro}`;
+  const top = h.logo ? section(intro, `${env.baseUrl}${h.logo}`) : text(intro);
+  return [container([top, divider(), ...rows, divider(), text(`-# ${h.footer}`)])];
 }
 
 /** What a topic button shows (only to the person who pressed it). */
