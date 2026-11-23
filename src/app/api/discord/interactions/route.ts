@@ -1,5 +1,5 @@
 import { after, NextResponse, type NextRequest } from "next/server";
-import { verifyDiscordRequest, editInteractionOriginal, editInteractionResponse, ephemeralFollowup } from "@/lib/discord-bot";
+import { verifyDiscordRequest, editInteractionOriginal, ephemeralFollowup } from "@/lib/discord-bot";
 import {
   ACCEPT_PREFIX,
   DENY_PREFIX,
@@ -47,7 +47,7 @@ import {
   shiftCommand,
   submitLoaFromDiscord,
 } from "@/lib/shift-commands";
-import { VERIFY_ID, VERIFY_RECHECK_ID, postVerifyPanel, runVerify } from "@/lib/verify";
+import { VERIFY_CHECK_PREFIX, VERIFY_ID, checkVerify, postVerifyPanel, runVerify } from "@/lib/verify";
 
 import { LOA_APPROVE, LOA_DENY, LOA_DENY_INPUT, LOA_DENY_MODAL, loaDenyModal, loaMessage } from "@/lib/loa";
 
@@ -57,7 +57,7 @@ import { LOA_APPROVE, LOA_DENY, LOA_DENY_INPUT, LOA_DENY_MODAL, loaDenyModal, lo
  *   https://fhpvcfsrp.site/api/discord/interactions
  */
 
-export const maxDuration = 30;
+export const maxDuration = 300; // verification waits for the member to finish on Dock
 
 type ModalRow = { components?: { custom_id: string; value: string }[]; component?: { custom_id: string; value: string } };
 
@@ -107,13 +107,7 @@ const deferPrivate = () => json({ type: 5, data: { flags: 64 } });
 
 function verifyLater(i: Interaction) {
   const member = i.member!;
-  after(async () => {
-    const reply = await runVerify(member).catch((e) => {
-      console.error("[verify] failed", e);
-      return { content: "Something went wrong. Please try again.", components: [] as unknown[] };
-    });
-    await editInteractionResponse(i.token, { components: [], ...reply }).catch((e) => console.error("[verify] reply failed", e));
-  });
+  after(() => runVerify(i.token, member).catch((e) => console.error("[verify] failed", e)));
   return deferPrivate();
 }
 
@@ -352,7 +346,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Verification panel: Verify / Check again
-    if (i.type === 3 && (cid === VERIFY_ID || cid === VERIFY_RECHECK_ID)) return verifyLater(i);
+    if (i.type === 3 && cid === VERIFY_ID) return verifyLater(i);
+    if (i.type === 3 && cid.startsWith(VERIFY_CHECK_PREFIX)) {
+      const member = i.member;
+      after(() => checkVerify(i.token, member, cid.slice(VERIFY_CHECK_PREFIX.length)).catch((e) => console.error("[verify] check failed", e)));
+      return json({ type: 6 });
+    }
 
     // Support panel: support type picked → show the "What's up?" pop-up
     if (i.type === 3 && cid === IDS.panelSelect) {

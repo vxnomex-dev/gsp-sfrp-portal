@@ -16,11 +16,13 @@ export const env = {
     publicKey: process.env.DISCORD_PUBLIC_KEY || "01bba59ada9f629a098ed1406081e0147332b375c4e87c536581d702d05a068c",
   },
 
-  /** Dock (docksys.xyz) — links Discord accounts to Roblox for the Verify button. Key from the Dock dashboard. */
+  /**
+   * Dock (docksys.xyz) verification — docksys.xyz/my/developer/keys.
+   * DOCK_API_KEY is secret (Vercel env var only). DOCK_PID is the public ID of the verification integration.
+   */
   dock: {
     apiKey: process.env.DOCK_API_KEY || "",
-    /** Where unverified members are sent to link their Roblox account. */
-    verifyUrl: process.env.DOCK_VERIFY_URL || "https://docksys.xyz",
+    pid: process.env.DOCK_PID || "",
   },
 
   // Server, roles and channels are chosen on Portal → Discord Setup (see lib/config.ts).
