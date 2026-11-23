@@ -1,5 +1,6 @@
 import { after, NextResponse, type NextRequest } from "next/server";
-import { verifyDiscordRequest, editInteractionOriginal, ephemeralFollowup } from "@/lib/discord-bot";
+import { verifyDiscordRequest, editInteractionOriginal, editInteractionResponse, ephemeralFollowup } from "@/lib/discord-bot";
+import { HANDBOOK_PREFIX, handbookSection, postAllHandbooks } from "@/lib/handbooks";
 import {
   ACCEPT_PREFIX,
   DENY_PREFIX,
@@ -230,6 +231,12 @@ export async function POST(req: NextRequest) {
           return json(privateReply(await postVerifyPanel(channelId)));
         case "verify":
           return verifyLater(i);
+        case "handbook":
+          after(async () => {
+            const lines = await postAllHandbooks();
+            await editInteractionResponse(i.token, { content: lines.join("\n") }).catch(() => {});
+          });
+          return deferPrivate();
 
         case "shift":
           return json(await shiftCommand(i.member, subOptions(i)?.name ?? "", subOption(i, "user")));
@@ -347,6 +354,7 @@ export async function POST(req: NextRequest) {
 
     // Verification panel: Verify / Check again
     if (i.type === 3 && cid === VERIFY_ID) return verifyLater(i);
+    if (i.type === 3 && cid.startsWith(HANDBOOK_PREFIX)) return json(handbookSection(cid));
     if (i.type === 3 && cid.startsWith(VERIFY_CHECK_PREFIX)) {
       const member = i.member;
       after(() => checkVerify(i.token, member, cid.slice(VERIFY_CHECK_PREFIX.length)).catch((e) => console.error("[verify] check failed", e)));
