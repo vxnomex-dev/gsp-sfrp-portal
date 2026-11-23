@@ -62,13 +62,14 @@ async function departmentRoleIds() {
   return rolesFor(await getConfig(), "ootc", "highCommand", "command", "supervisor", "patrol", "personnel");
 }
 
-/** Which rank a Discord role represents, by its name — only exact "FHP | <rank>" roles count. */
+/**
+ * Which rank a Discord role represents, by its name. The whole name must be the rank — "Captain" or "FHP | Captain" —
+ * so roles like "Office of the Colonel", "CIU | Commander" or "Wanting CIU" never count as ranks.
+ */
 export function rankForRoleName(name: string): RankKey | null {
   const n = name.normalize("NFKC");
   const prefix = RANK_ROLE_PREFIX.exec(n);
-  if (!prefix) return null;
-  const rest = n
-    .slice(prefix[0].length)
+  const rest = (prefix ? n.slice(prefix[0].length) : n)
     .toLowerCase()
     .replace(/[^a-z ]/g, " ")
     .replace(/\s+/g, " ")
@@ -201,10 +202,11 @@ export function invalidateRosterCache() {
   cache = null;
 }
 
-function rankRoleMap(roles: GuildRole[], deptRoles: string[] = []) {
+function rankRoleMap(roles: GuildRole[]) {
   const map = new Map<string, RankKey>();
   for (const r of roles) {
-    if (deptRoles.includes(r.id) || r.name === "@everyone") continue;
+    // A role can be both a department role and a rank (e.g. "Major" chosen as High Command), so don't skip those
+    if (r.name === "@everyone") continue;
     const k = rankForRoleName(r.name);
     if (k) map.set(r.id, k);
   }
@@ -232,7 +234,7 @@ export async function rankForRoles(roleIds: string[]): Promise<RankKey | null> {
 export async function buildRoster({ fresh = false } = {}) {
   const { members, roles } = await loadDiscord(fresh);
   const dept = await departmentRoleIds();
-  const rankByRole = rankRoleMap(roles, dept);
+  const rankByRole = rankRoleMap(roles);
   const callsigns = new Map(
     (await query<{ user_id: string; callsign: number }>(`SELECT user_id, callsign FROM roster_callsigns`)).map((r) => [
       r.user_id,
