@@ -40,7 +40,7 @@ type Attendee = { user_id: string; status: "attending" | "late" };
 const reply = (content: string) => ({ type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } });
 
 async function canHost(m: Member) {
-  const ids = rolesFor(await getConfig(), "ootc", "highCommand", "command", "supervisor");
+  const ids = rolesFor(await getConfig(), "ootc", "supervisor");
   return m.roles.some((r) => ids.includes(r));
 }
 async function isPersonnel(m: Member) {
@@ -136,7 +136,7 @@ export async function startDeployment(opts: {
   notes: string | null;
 }) {
   const { member } = opts;
-  if (!(await canHost(member))) return reply("Only Supervisors, Command, High Command and the Office of the Colonel can host a deployment.");
+  if (!(await canHost(member))) return reply("Only the Office of the Colonel and Supervisory Staff can host a deployment.");
   const kind: Kind = opts.kind === "mass_shift" ? "mass_shift" : "deployment";
   const cfg = await getConfig();
   const channelId = cfg.channels.deployments || opts.channelId;
@@ -177,7 +177,7 @@ export async function deploymentButton(customId: string, member: Member) {
 
   if (prefix === DEP.end) {
     const allowed = member.user.id === d.host_id || member.user.id === d.cohost_id || (await canHost(member));
-    if (!allowed) return reply("Only the host, co-host or a supervisor can conclude this.");
+    if (!allowed) return reply("Only the host, co-host, Supervisory Staff or the Office of the Colonel can conclude this.");
     await query(`UPDATE deployments SET status='concluded', ended_by=$1, ended_at=now() WHERE id=$2 AND status='active'`, [member.user.id, id]);
   } else {
     if (!(await isPersonnel(member))) return reply("Only Florida Highway Patrol personnel can sign up.");
