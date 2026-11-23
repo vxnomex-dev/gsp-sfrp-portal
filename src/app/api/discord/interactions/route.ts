@@ -43,7 +43,7 @@ import { appRef } from "@/lib/forms";
 /**
  * Discord sends button clicks, menu choices, pop-up submissions and slash commands here.
  * Developer Portal → General Information → Interactions Endpoint URL:
- *   https://gspsfrp.xyz/api/discord/interactions
+ *   https://fhpvcfsrp.site/api/discord/interactions
  */
 
 export const maxDuration = 30;

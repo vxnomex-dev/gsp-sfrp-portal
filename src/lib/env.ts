@@ -1,7 +1,11 @@
 import "server-only";
 
 export const env = {
-  baseUrl: (process.env.PUBLIC_BASE_URL || "http://localhost:3000").replace(/\/$/, ""),
+  /** The live website address (Discord login, links in bot messages). SITE_URL overrides it. */
+  baseUrl: (
+    process.env.SITE_URL ||
+    (process.env.VERCEL_ENV === "production" ? "https://fhpvcfsrp.site" : process.env.PUBLIC_BASE_URL || "http://localhost:3000")
+  ).replace(/\/$/, ""),
   sessionSecret: process.env.SESSION_SECRET || "",
 
   discord: {
