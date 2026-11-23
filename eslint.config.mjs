@@ -12,8 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // The voice recorder is a separate program with its own package.json
-    "recorder/**",
   ]),
 ]);
 
