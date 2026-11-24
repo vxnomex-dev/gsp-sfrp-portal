@@ -3,6 +3,7 @@ import "./globals.css";
 import { Footer, Header } from "@/components/SiteChrome";
 import { site } from "@/lib/site";
 import { THEME_SCRIPT } from "@/lib/theme";
+import { IntroVideo } from "@/components/IntroVideo";
 
 export const metadata: Metadata = {
   title: {
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
+        <IntroVideo />
       </body>
     </html>
   );
