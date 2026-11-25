@@ -471,4 +471,63 @@ export const SOP: SopSection[] = [
       },
     ],
   },
+  {
+    id: "sop-activity",
+    numeral: "V",
+    title: "Activity Requirements",
+    groups: [
+      {
+        items: [
+          {
+            num: "5.01",
+            title: "Weekly Activity Quota",
+            body: [
+              { lead: "Quota:", text: "All department personnel must complete a minimum of 3 hours of on-duty time each week." },
+              "On-duty time is tracked through the shift system. Start and end every patrol with /shift start and /shift end in Discord, or from the Shifts page in the employee portal. Time that isn't logged does not count toward quota.",
+              "Personnel on an approved leave of absence are exempt from the quota for the length of their leave. Failing to meet quota without an approved leave may result in an Inactivity Notice.",
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "sop-transfers",
+    numeral: "VI",
+    title: "Transfer Guidelines",
+    groups: [
+      {
+        items: [
+          {
+            num: "6.01",
+            title: "Transfer Eligibility",
+            body: [
+              "• Must not be on probationary or cadet status.",
+              "• Must complete at least 30 days in the initial department.",
+              "• Members returning from reserve status must complete 30 days of departmental service before becoming eligible.",
+              "• Members on LOA or reserve status, or with active strikes (1 or 2) or suspensions, are ineligible.",
+            ],
+          },
+          {
+            num: "6.02",
+            title: "Rank and Subdivision Changes",
+            body: [
+              "• Transfers result in a one-rank demotion, regardless of circumstances.",
+              "• LC or HC members will be reassigned to the highest available supervisor rank.",
+              "• If the destination rank is full, a two-rank demotion applies instead.",
+              "• Members may be assigned to a corresponding subdivision in the receiving department.",
+            ],
+          },
+          {
+            num: "6.03",
+            title: "Post-Transfer Restrictions",
+            body: [
+              "• Members are subject to an immediate one-week promotion cooldown following a completed transfer.",
+              { lead: "Issued by:", text: "Department Oversight — A. Caldwell" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
