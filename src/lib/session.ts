@@ -73,6 +73,7 @@ function devAccess(as: string): { permissions: Permission[]; labels: string[] } 
     ootc: { permissions: ALL_PERMISSIONS, labels: ["Office of the Colonel"] },
     press: { permissions: ["press"], labels: ["Press Release Team"] },
     psb: { permissions: ["portal", "reports"], labels: ["Human Resources"] },
+    ia: { permissions: ["portal", "reports", "ia"], labels: ["Internal Affairs"] },
     all: { permissions: ALL_PERMISSIONS, labels: ["High Command", "Human Resources"] },
   };
   return map[as] ?? map.public;

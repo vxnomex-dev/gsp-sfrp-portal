@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Car, Megaphone, Timer, CalendarOff, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
+import { Scale, Car, Megaphone, Timer, CalendarOff, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
 import { guard } from "./guard";
 import { getCounts } from "@/lib/data";
+import { iaCounts } from "@/lib/ia";
 import { avatarUrl } from "@/lib/discord";
 
 export default function PortalHome() {
@@ -17,7 +18,7 @@ async function Dashboard() {
   const g = await guard("portal", "/portal");
   if (!g.viewer) return g.denied;
   const { viewer } = g;
-  const counts = await getCounts();
+  const [counts, ia] = await Promise.all([getCounts(), viewer.can("ia") ? iaCounts() : Promise.resolve({ open: 0, waiting: 0 })]);
 
   const tiles = [
     {
@@ -58,6 +59,14 @@ async function Dashboard() {
       title: "Employee Reports",
       body: "Human Resources case files.",
       count: counts.reportsOpen,
+      countLabel: "open cases",
+    },
+    viewer.can("ia") && {
+      href: "/portal/ia",
+      icon: Scale,
+      title: "Internal Affairs",
+      body: ia.waiting ? `${ia.waiting} report${ia.waiting === 1 ? "" : "s"} waiting for a case. Cases and employee files.` : "Cases, incoming reports and employee files.",
+      count: ia.open,
       countLabel: "open cases",
     },
     viewer.can("content") && {

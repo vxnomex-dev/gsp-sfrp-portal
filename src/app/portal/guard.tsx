@@ -14,6 +14,7 @@ const messages: Record<Permission, string> = {
   alerts: "Only the Office of the Colonel can issue statewide alerts.",
   press: "Only the Press Release Team can publish press releases.",
   notices: "Only High Command and the Office of the Colonel can post department notices.",
+  ia: "The Internal Affairs panel is restricted to the Internal Affairs Division.",
   shifts: "Only the Office of the Colonel and supervisory staff can manage shifts.",
   setup: "Only the bot owner, server admins and the Office of the Colonel can change the Discord setup.",
 };

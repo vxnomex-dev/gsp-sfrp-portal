@@ -26,6 +26,7 @@ async function Picker({ searchParams }: { searchParams: PageProps<"/dev-login">[
     ["employee", "Trooper (employee role)"],
     ["command", "Command Staff"],
     ["psb", "Human Resources"],
+    ["ia", "Internal Affairs"],
     ["all", "Command Staff + Human Resources"],
     ["ootc", "Office of the Colonel"],
     ["press", "Press Release Team (civilian)"],

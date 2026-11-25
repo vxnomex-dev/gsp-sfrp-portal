@@ -15,6 +15,7 @@ export const ROLE_SLOTS = {
   patrol: { label: "Patrol", hint: "Opens the employee portal." },
   personnel: { label: "Department Personnel", hint: "Everyone in the department. Opens the employee portal." },
   hr: { label: "Human Resources", hint: "Sees trooper reports and issues infractions." },
+  internalAffairs: { label: "Internal Affairs Division", hint: "Opens the Internal Affairs panel: cases, reports and employee files." },
   press: { label: "Press Release Team", hint: "Publishes press releases." },
   communityMember: { label: "Community Member", hint: "The only role kept when someone is terminated." },
   loa: { label: "Leave of Absence", hint: "Given while someone's leave is approved, removed when it ends." },

@@ -9,10 +9,11 @@ export type Permission =
   | "alerts" // publish statewide alerts (Office of the Colonel)
   | "press" // publish press releases (Press Release Team + Office of the Colonel)
   | "notices" // publish important info to department personnel (Office of the Colonel + High Command)
+  | "ia" // Internal Affairs panel: cases and employee files (Internal Affairs Division + Office of the Colonel)
   | "shifts" // manage other members' shifts and leave requests (Office of the Colonel + supervisory staff)
   | "setup"; // Discord Setup: choose the server, roles and channels (bot owner, server admins, Office of the Colonel)
 
-export const ALL_PERMISSIONS: Permission[] = ["portal", "applications", "content", "reports", "alerts", "press", "notices", "shifts", "setup"];
+export const ALL_PERMISSIONS: Permission[] = ["portal", "applications", "content", "reports", "ia", "alerts", "press", "notices", "shifts", "setup"];
 
 export type Access = {
   permissions: Permission[];
@@ -45,6 +46,13 @@ export function resolveAccess(roleIds: string[], cfg: DiscordConfig): Access {
     perms.add("portal");
     perms.add("reports");
     labels.push("Human Resources");
+  }
+  // Internal Affairs works the reports and keeps the case files
+  if (has(r.internalAffairs)) {
+    perms.add("portal");
+    perms.add("reports");
+    perms.add("ia");
+    labels.push("Internal Affairs");
   }
   if (has(r.supervisor)) perms.add("shifts");
   if (has(r.supervisor, r.patrol, r.personnel)) {

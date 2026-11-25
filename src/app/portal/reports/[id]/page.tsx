@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FilePlus2, Scale } from "lucide-react";
+import { casesForReport, iaRef } from "@/lib/ia";
 import { guard } from "../../guard";
 import { getReport } from "@/lib/data";
 import { reportRef } from "@/lib/forms";
@@ -35,6 +36,7 @@ async function ReportDetail({ params }: { params: PageProps<"/portal/reports/[id
 
   const r = Number.isInteger(Number(id)) ? await getReport(Number(id)) : null;
   if (!r) return <p className="text-muted-foreground">Report not found.</p>;
+  const iaCases = g.viewer.can("ia") ? await casesForReport(r.id) : [];
 
   return (
     <div>
@@ -83,6 +85,33 @@ async function ReportDetail({ params }: { params: PageProps<"/portal/reports/[id
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-48 lg:self-start">
+          {g.viewer.can("ia") && (
+            <div className="card card-gold space-y-3 p-5">
+              <div className="flex items-center gap-2 font-display uppercase tracking-wide text-navy">
+                <Scale size={18} /> Internal Affairs
+              </div>
+              {iaCases.length > 0 ? (
+                <>
+                  {iaCases.map((c) => (
+                    <Link key={c.id} href={`/portal/ia/cases/${c.id}`} className="flex items-center justify-between gap-2 rounded-sm border border-border px-3 py-2 hover:border-navy">
+                      <span className="font-display text-navy">{iaRef(c.id)}</span>
+                      <StatusBadge kind="ia" status={c.finding} />
+                    </Link>
+                  ))}
+                  <p className="text-xs text-muted-foreground">This report&apos;s status follows the IA case.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Apply this report to an IA case. The reporter, reason, statement and evidence are filled in for you.
+                  </p>
+                  <Link href={`/portal/ia/new?report=${r.id}`} className="btn btn-navy w-full">
+                    <FilePlus2 size={16} /> Open IA case
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
           <CaseForm id={r.id} status={r.status} notes={r.psb_notes ?? ""} assigned={!r.investigator_id ? "none" : r.investigator_id === g.viewer.uid ? "me" : "other"} />
           <p className="text-sm text-muted-foreground">
             Investigator: <strong>{r.investigator_name ?? "Unassigned"}</strong>

@@ -376,3 +376,12 @@ h4 {
     animation: none !important;
   }
 }
+
+/* Printing an employee file: leave out the site's header, menu and footer */
+@media print {
+  body > header,
+  body > footer,
+  body > nav {
+    display: none !important;
+  }
+}
