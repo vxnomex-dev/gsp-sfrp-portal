@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/SiteChrome";
 import { site } from "@/lib/site";
 import { avatarUrl } from "@/lib/discord";
-import { RANKS, TIERS, buildRoster, assignmentFor, getAssignments, syncIfStale, type Assignments, type RosterEntry } from "@/lib/roster";
+import { RANKS, TIERS, buildRoster, assignmentFor, getAssignments, syncIfStale, announceCallsignFormatOnce, type Assignments, type RosterEntry } from "@/lib/roster";
 
 export const metadata: Metadata = { title: "Roster" };
 export const maxDuration = 300;
@@ -44,7 +44,10 @@ async function Roster() {
     );
   }
   // Keep callsigns and nicknames in step with Discord (at most every 10 minutes)
-  after(syncIfStale);
+  after(async () => {
+    await announceCallsignFormatOnce().catch((e) => console.error("[roster] callsign announcement failed", e));
+    await syncIfStale();
+  });
 
   const groups: { key: string; label: string; rows: Row[]; filled: number }[] = TIERS.map((tier) => {
     const ranks = RANKS.filter((r) => r.tier === tier.key);

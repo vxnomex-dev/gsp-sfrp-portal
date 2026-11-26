@@ -56,7 +56,7 @@ async function RosterSettings() {
 
       {!CALLSIGNS_READY && (
         <div className="border-l-4 border-gold bg-panel px-5 py-4 text-sm">
-          <strong>Callsigns are paused.</strong> Nobody is numbered or renamed until the FHP rank ladder and its C-##
+          <strong>Callsigns are paused.</strong> Nobody is numbered or renamed until the FHP rank ladder and its callsign
           numbers are set up. The roster still lists everyone by rank.
         </div>
       )}

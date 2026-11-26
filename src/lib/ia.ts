@@ -1,7 +1,7 @@
 import "server-only";
 import { query, queryOne } from "./db";
 import { buildRoster, RANKS, type RosterEntry } from "./roster";
-import { fmtCallsign } from "./callsign";
+import { fmtCallsign, parseCallsign } from "./callsign";
 import type { Report } from "./data";
 
 /**
@@ -97,9 +97,10 @@ export async function currentEmployees(): Promise<EmployeeOption[]> {
 /** Best guess at which employee a public report is about, from the name / callsign the reporter typed. */
 export function guessEmployee(employees: EmployeeOption[], report: Pick<Report, "trooper_name" | "trooper_identifier">) {
   const hay = `${report.trooper_name} ${report.trooper_identifier ?? ""}`.toLowerCase();
-  const callsign = hay.match(/c-?\s?(\d{1,3})\b/)?.[1];
-  if (callsign) {
-    const hit = employees.find((e) => e.callsign && Number(e.callsign.replace(/\D/g, "")) === Number(callsign));
+  const typed = hay.match(/\b[1-4]\d{3}\b/)?.[0] ?? hay.match(/c-?\s?\d{1,3}\b/)?.[0];
+  const seat = typed ? parseCallsign(typed) : null;
+  if (seat) {
+    const hit = employees.find((e) => e.callsign && parseCallsign(e.callsign) === seat);
     if (hit) return hit;
   }
   const words = hay.split(/[^a-z0-9]+/).filter((w) => w.length >= 3);

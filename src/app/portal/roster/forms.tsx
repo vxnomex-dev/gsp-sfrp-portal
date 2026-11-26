@@ -14,7 +14,7 @@ export function SyncForms() {
         <input type="hidden" name="mode" value="sync" />
         <p className="text-muted-foreground">
           Gives anyone whose callsign doesn&apos;t match their rank the lowest free number in their rank&apos;s block, releases
-          callsigns of people who left, and fixes nicknames to <code>C-07 | Name</code>.
+          callsigns of people who left, and fixes nicknames to <code>4024 | Name</code>.
         </p>
         <SubmitButton className="btn btn-navy" pendingText="Syncing… this can take a minute">Sync now</SubmitButton>
       </form>
@@ -142,7 +142,7 @@ export function ChangeCallsignForm({ members }: { members: { id: string; label: 
         </label>
         <label className="w-36">
           <span className="field-label">New callsign</span>
-          <input name="callsign" className="field" placeholder="C-02" autoComplete="off" />
+          <input name="callsign" className="field" placeholder="2011" autoComplete="off" />
         </label>
         <SubmitButton className="btn btn-navy" pendingText="Changing…">
           Change callsign

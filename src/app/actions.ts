@@ -496,11 +496,11 @@ export async function saveDiscordSetup(_: FormState, fd: FormData): Promise<Form
 export async function changeCallsign(_: FormState, fd: FormData): Promise<FormState> {
   await requirePermission("content");
   const { setCallsignManually } = await import("@/lib/roster");
-  const { fmtCallsign } = await import("@/lib/callsign");
+  const { fmtCallsign, parseCallsign } = await import("@/lib/callsign");
   const userId = String(fd.get("member") ?? "");
-  const n = Number(String(fd.get("callsign") ?? "").replace(/[^0-9]/g, ""));
+  const n = parseCallsign(String(fd.get("callsign") ?? ""));
   if (!userId) return { message: "Pick a member." };
-  if (!n) return { message: "Enter a callsign, e.g. C-02." };
+  if (!n) return { message: "Enter a callsign, e.g. 2011." };
   try {
     const r = await setCallsignManually(userId, n);
     refresh();
