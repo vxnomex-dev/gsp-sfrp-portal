@@ -312,6 +312,76 @@ async function stripRoles(userId: string, problems: string[], mode: "termination
   return removed;
 }
 
+/* ------------------------------------------------------------------ */
+/* Infraction roles ("Strike 1", "Strike 2", "Warning 1", "Suspended")  */
+/* ------------------------------------------------------------------ */
+
+/** Kinds that stack ("Strike 1", "Strike 2"…) and the word their Discord roles use. */
+const NUMBERED_ROLES: Partial<Record<InfractionKind, RegExp>> = {
+  strike: /strike/i,
+  warning: /warn(ing)?/i,
+  inactivity: /inactiv(ity|e)/i,
+};
+const ROMAN = ["", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"];
+
+/** The number in a role name like "Strike 2", "FHP | Strike II" or "2nd Strike". */
+function roleNumber(name: string): number | null {
+  const n = name.normalize("NFKC").toLowerCase();
+  const digit = /(?:^|\D)(\d{1,2})(?:st|nd|rd|th)?(?:\D|$)/.exec(n);
+  if (digit) return Number(digit[1]);
+  const roman = /\b(x|ix|viii|vii|vi|v|iv|iii|ii|i)\b/.exec(n.replace(/^.*?(strike|warn\w*|inactiv\w*)/, "$1 "));
+  if (roman) return ROMAN.indexOf(roman[1]);
+  return null;
+}
+
+/**
+ * Makes the member's infraction roles match their record: e.g. their 2nd active strike → "Strike 2" (and
+ * "Strike 1" removed). Suspensions get a "Suspended" role. Runs after issuing and after voiding.
+ */
+async function syncInfractionRoles(userId: string, kind: InfractionKind, problems: string[]) {
+  const pattern = NUMBERED_ROLES[kind];
+  const isSuspension = kind === "suspension";
+  if (!pattern && !isSuspension) return;
+  const [member, roles, count] = await Promise.all([
+    fetchGuildMember(userId),
+    fetchGuildRoles(),
+    queryOne<{ n: number }>(`SELECT count(*)::int AS n FROM infractions WHERE user_id=$1 AND kind=$2 AND status <> 'voided'`, [userId, kind]),
+  ]);
+  const active = count?.n ?? 0;
+
+  if (isSuspension) {
+    const role = roles.find((r) => !r.managed && /suspen(ded|sion)/i.test(r.name));
+    if (!role) {
+      if (active) problems.push('No "Suspended" role found in the server, so no role was given.');
+      return;
+    }
+    if (active && !member.roles.includes(role.id)) await addMemberRole(userId, role.id).catch((e) => problems.push(`Couldn't give <@&${role.id}>: ${explain(e)}`));
+    if (!active && member.roles.includes(role.id)) await removeMemberRole(userId, role.id).catch((e) => problems.push(`Couldn't remove <@&${role.id}>: ${explain(e)}`));
+    return;
+  }
+
+  // Every "Strike N" style role, by number
+  const numbered = roles
+    .filter((r) => !r.managed && pattern!.test(r.name))
+    .map((r) => ({ id: r.id, n: roleNumber(r.name) }))
+    .filter((r): r is { id: string; n: number } => r.n !== null && r.n > 0);
+  if (!numbered.length) {
+    if (active) problems.push(`No "${INFRACTION_TYPES[kind]} 1" style roles found in the server, so no role was given.`);
+    return;
+  }
+  const top = Math.max(...numbered.map((r) => r.n));
+  const want = active ? numbered.find((r) => r.n === Math.min(active, top)) : undefined;
+  if (active > top) problems.push(`They now have ${active} active ${INFRACTION_TYPES[kind].toLowerCase()}s, but the highest role is ${INFRACTION_TYPES[kind]} ${top}.`);
+  for (const r of numbered) {
+    if (r.id !== want?.id && member.roles.includes(r.id)) {
+      await removeMemberRole(userId, r.id).catch((e) => problems.push(`Couldn't remove <@&${r.id}>: ${explain(e)}`));
+    }
+  }
+  if (want && !member.roles.includes(want.id)) {
+    await addMemberRole(userId, want.id).catch((e) => problems.push(`Couldn't give <@&${want.id}>: ${explain(e)}`));
+  }
+}
+
 export function suspensionModal(userId: string, kind: InfractionKind, reason: string, policy: string | null) {
   return {
     type: 9,
@@ -427,6 +497,9 @@ export async function runInfraction(opts: {
       invalidateRosterCache();
     }
 
+    // Matching role: Strike 1 / Strike 2…, Warning 1…, Suspended
+    await syncInfractionRoles(userId, kind, problems).catch((e) => problems.push(`Couldn't update infraction roles: ${explain(e)}`));
+
     const dm = await sendDirectMessageV2(userId, infractionDM(inf));
     if (!dm) problems.push("Couldn't DM the member (their DMs may be closed).");
 
@@ -472,6 +545,9 @@ export async function runVoid(opts: { token: string; issuer: Member; caseId: num
         components: [container([text(`**${caseRef(inf.id)}** was voided by <@${issuer.user.id}>.`)], false)],
       }).catch(() => {});
     }
+
+    // Step the infraction role back (Strike 2 → Strike 1, or none)
+    await syncInfractionRoles(inf.user_id, inf.kind, problems).catch((e) => problems.push(`Couldn't update infraction roles: ${explain(e)}`));
 
     // Undo a blacklist: take the State Blacklist role off
     if (inf.kind === "blacklist") {
