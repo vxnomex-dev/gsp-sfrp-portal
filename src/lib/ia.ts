@@ -97,7 +97,7 @@ export async function currentEmployees(): Promise<EmployeeOption[]> {
 /** Best guess at which employee a public report is about, from the name / callsign the reporter typed. */
 export function guessEmployee(employees: EmployeeOption[], report: Pick<Report, "trooper_name" | "trooper_identifier">) {
   const hay = `${report.trooper_name} ${report.trooper_identifier ?? ""}`.toLowerCase();
-  const typed = hay.match(/\b[1-4]\d{3}\b/)?.[0] ?? hay.match(/c-?\s?\d{1,3}\b/)?.[0];
+  const typed = hay.match(/\b[3-6]\d{2}\b/)?.[0] ?? hay.match(/\b[1-4]\d{3}\b/)?.[0] ?? hay.match(/c-?\s?\d{1,3}\b/)?.[0];
   const seat = typed ? parseCallsign(typed) : null;
   if (seat) {
     const hit = employees.find((e) => e.callsign && parseCallsign(e.callsign) === seat);

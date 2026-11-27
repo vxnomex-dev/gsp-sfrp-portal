@@ -500,7 +500,7 @@ export async function changeCallsign(_: FormState, fd: FormData): Promise<FormSt
   const userId = String(fd.get("member") ?? "");
   const n = parseCallsign(String(fd.get("callsign") ?? ""));
   if (!userId) return { message: "Pick a member." };
-  if (!n) return { message: "Enter a callsign, e.g. 2011." };
+  if (!n) return { message: "Enter a callsign, e.g. 311." };
   try {
     const r = await setCallsignManually(userId, n);
     refresh();

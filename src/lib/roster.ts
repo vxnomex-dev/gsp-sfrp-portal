@@ -1,4 +1,4 @@
-import { fmtCallsign, parseCallsign } from "./callsign";
+import { fmtCallsign, fmtCallsignV2, parseCallsign } from "./callsign";
 import "server-only";
 import { env } from "./env";
 import { query, queryOne } from "./db";
@@ -326,7 +326,7 @@ function explain(err: unknown) {
 }
 
 /**
- * Makes everyone's callsign match their rank's block and sets nicknames to "2011 | Name".
+ * Makes everyone's callsign match their rank's block and sets nicknames to "311 | Name".
  * reissue = true clears all callsigns first, so everyone is numbered fresh within their block.
  */
 /** Callsigns and appointments from the FHP Main Database spreadsheet (applied once, then managed on the site). */
@@ -502,20 +502,20 @@ export async function releaseCallsign(userId: string) {
 
 /** Runs a normal sync if the last one was more than 10 minutes ago (called when the roster is viewed). */
 /**
- * One-time: the Updated Callsign Sheet (1###/2###/3###/4###). Renames everyone to the new format straight away,
+ * One-time: the Updated Callsign Sheet (3##/4##/5##/6##). Renames everyone to the new format straight away,
  * then DMs each member their new callsign. Runs once, on the first roster visit after the change goes live.
  */
 export async function announceCallsignFormatOnce() {
   if (!env.discord.botToken || !CALLSIGNS_READY) return;
   const claimed = await queryOne(
-    `INSERT INTO meta (key, value) VALUES ('callsign_format_v2_announced', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+    `INSERT INTO meta (key, value) VALUES ('callsign_format_v3_announced', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
   );
   if (!claimed) return;
   try {
     await syncRoster();
   } catch (e) {
     console.error("[roster] callsign format change: sync failed", e);
-    await query(`DELETE FROM meta WHERE key='callsign_format_v2_announced'`); // try again next visit
+    await query(`DELETE FROM meta WHERE key='callsign_format_v3_announced'`); // try again next visit
     return;
   }
   const { entries } = await buildRoster();
@@ -523,22 +523,22 @@ export async function announceCallsignFormatOnce() {
   let failed = 0;
   for (const e of entries) {
     if (e.callsign === null) continue;
-    const old = `C-${String(e.callsign).padStart(2, "0")}`;
+    const old = fmtCallsignV2(e.callsign);
     const ok = await sendDirectMessageV2(e.userId, [
       container([
         text(
           "## Callsign Update\n" +
-            "> A new change has been made by the **Overseers** — Florida Highway Patrol callsigns have been updated. **Effective immediately.**\n\n" +
+            "> Another change has been made by the **Overseers** — Florida Highway Patrol callsigns have been updated again. **Effective immediately.**\n\n" +
             `Your callsign has been changed to **${fmtCallsign(e.callsign)}** (was ${old}), and your Discord nickname has been updated to match.`,
         ),
         divider(),
         text(
           "**FHP callsigns**\n" +
-            "`1###` — Office of the Colonel\n" +
-            "`2###` — Supervisory Staff\n" +
-            "`3###` — Patrol Supervisors\n" +
-            "`4###` — Patrol Staff\n" +
-            "`K-##` — K9 Units",
+            "`3##` — High Command\n" +
+            "`4##` — Supervisory Staff\n" +
+            "`5##` — Patrol Troopers\n" +
+            "`6##` — Probationary Troopers\n" +
+            "`K-##` — K-9 units",
         ),
         text("-# Use your new callsign on the radio and in game from now on. Questions? Contact your supervisor."),
       ]),
@@ -547,7 +547,7 @@ export async function announceCallsignFormatOnce() {
     else failed++;
     await new Promise((r) => setTimeout(r, 400)); // stay under Discord's DM rate limits
   }
-  await setMeta("callsign_format_v2_result", { sent, failed, at: new Date().toISOString() });
+  await setMeta("callsign_format_v3_result", { sent, failed, at: new Date().toISOString() });
   console.log(`[roster] callsign format change: DMed ${sent}, couldn't DM ${failed}`);
 }
 
