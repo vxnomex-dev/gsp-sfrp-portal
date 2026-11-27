@@ -45,7 +45,7 @@ export const pendingNdaCount = () =>
 
 /* ---------------- Discord: the agreements channel ---------------- */
 
-function ndaMessage(n: Nda) {
+function ndaMessage(n: Nda, pingRole: string | null = null) {
   const t = (d: string | Date) => Math.floor(new Date(d).getTime() / 1000);
   const status =
     n.status === "countersigned"
@@ -61,6 +61,7 @@ function ndaMessage(n: Nda) {
           type: 10,
           content:
             `## Confidentiality Agreement ${n.status === "pending" ? "Signed" : n.status === "countersigned" ? "Complete" : "Void"}\n` +
+            (pingRole ? `<@&${pingRole}>\n` : "") +
             `> <@${n.user_id}> signed the **Confidentiality and Employment Agreement**.`,
         },
         { type: 14, divider: true, spacing: 1 },
@@ -96,13 +97,16 @@ export async function postNda(id: number) {
   if (!n) return;
   const { getConfig } = await import("./config");
   const { postChannelMessage, editChannelMessage } = await import("./discord-bot");
-  const components = ndaMessage(n);
+  const cfg = await getConfig();
+  // The Office of the Colonel is pinged when it's first posted (and stays mentioned on later edits, without re-pinging)
+  const ootc = cfg.roles.ootc || null;
+  const components = ndaMessage(n, ootc);
   if (n.channel_id && n.message_id) {
     await editChannelMessage(n.channel_id, n.message_id, { components });
     return;
   }
-  const channel = (await getConfig()).channels.ndas;
+  const channel = cfg.channels.ndas;
   if (!channel) return;
-  const msg = await postChannelMessage(channel, { components });
+  const msg = await postChannelMessage(channel, { components, allowed_mentions: { parse: [], roles: ootc ? [ootc] : [] } });
   await query(`UPDATE nda_agreements SET channel_id=$1, message_id=$2 WHERE id=$3`, [msg.channel_id, msg.id, id]);
 }
