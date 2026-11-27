@@ -1,9 +1,9 @@
-import { fmtCallsign, fmtCallsignV2, parseCallsign } from "./callsign";
+import { fmtCallsign, migrateSeat, parseCallsign } from "./callsign";
 import "server-only";
 import { env } from "./env";
 import { query, queryOne } from "./db";
 import { getConfig, rolesFor } from "./config";
-import { container, divider, text } from "./components";
+import { container, text } from "./components";
 import {
   DiscordError,
   fetchGuildMember,
@@ -48,10 +48,12 @@ export const RANKS = [
   // Matches the FHP Main Database roster
   { key: "major", label: "Major", tier: "command", block: [4, 5], name: "major" },
   { key: "captain", label: "Captain", tier: "command", block: [6, 8], name: "captain" },
-  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [10, 13], name: "lieutenant" },
-  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [14, 17], name: "sergeant" },
-  { key: "cpl", label: "Corporal", tier: "supervisors", block: [18, 20], name: "corporal" },
-  { key: "tpr", label: "Trooper", tier: "patrol", block: [24, 30], name: "trooper" },
+  // 10–12 Patrol Lieutenants, 13–15 Division Lieutenants (CIU, Canine, ADU)
+  { key: "lieutenant", label: "Lieutenant", tier: "command", block: [10, 15], name: "lieutenant" },
+  // 16–18 Field Supervisory Sergeants, 19–21 Division Sergeants (CIU, Canine, ADU)
+  { key: "sgt", label: "Sergeant", tier: "supervisors", block: [16, 21], name: "sergeant" },
+  { key: "cpl", label: "Corporal", tier: "supervisors", block: [22, 24], name: "corporal" },
+  { key: "tpr", label: "Trooper", tier: "patrol", block: [31, 37], name: "trooper" },
   { key: "prob", label: "Probationary Trooper", tier: "patrol", block: [310, 400], name: "probationary trooper", vacancies: false },
 ] as const satisfies readonly Rank[];
 export type RankKey = (typeof RANKS)[number]["key"];
@@ -113,9 +115,9 @@ const DEFAULT_ASSIGNMENTS: Assignments = {
     "6": "Patrol Command",
     "7": "Patrol Command",
     "8": "Patrol Command",
-    "11": "Division Commander",
-    "12": "Division Commander",
     "13": "Division Commander",
+    "14": "Division Commander",
+    "15": "Division Commander",
   },
   ranks: {},
 };
@@ -380,8 +382,11 @@ async function applySheetOnce() {
   const done = await queryOne(`INSERT INTO meta (key, value) VALUES ('callsigns_sheet_v1', 'true') ON CONFLICT (key) DO NOTHING RETURNING key`);
   if (!done) return;
   await query(`DELETE FROM roster_callsigns`);
-  for (const [userId, n] of Object.entries(SHEET_CALLSIGNS)) await saveCallsign(userId, n);
-  await setMeta("roster_assignments", { slots: SHEET_APPOINTMENTS, ranks: { prob: "Patrol Staff" } });
+  for (const [userId, n] of Object.entries(SHEET_CALLSIGNS)) await saveCallsign(userId, migrateSeat(n));
+  const slots = Object.fromEntries(Object.entries(SHEET_APPOINTMENTS).map(([k, v]) => [String(migrateSeat(Number(k))), v]));
+  slots["11"] = slots["12"] = slots["10"];
+  slots["17"] = slots["18"] = slots["16"];
+  await setMeta("roster_assignments", { slots, ranks: { prob: "Patrol Staff" } });
 }
 
 export async function syncRoster({ reissue = false } = {}): Promise<SyncReport> {
@@ -502,53 +507,42 @@ export async function releaseCallsign(userId: string) {
 
 /** Runs a normal sync if the last one was more than 10 minutes ago (called when the roster is viewed). */
 /**
- * One-time: the Updated Callsign Sheet (3##/4##/5##/6##). Renames everyone to the new format straight away,
- * then DMs each member their new callsign. Runs once, on the first roster visit after the change goes live.
+ * One-time: after the extra Patrol Lieutenant / Field Supervisor seats were added, renames everyone and DMs
+ * only the members whose callsign moved. Runs on the first roster visit after the change goes live.
  */
 export async function announceCallsignFormatOnce() {
   if (!env.discord.botToken || !CALLSIGNS_READY) return;
+  const changed = await getMeta<{ user_id: string; old: string; new: string }[]>("seats_v4_changed");
+  if (!changed) return;
   const claimed = await queryOne(
-    `INSERT INTO meta (key, value) VALUES ('callsign_format_v3_announced', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+    `INSERT INTO meta (key, value) VALUES ('seats_v4_announced', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
   );
   if (!claimed) return;
   try {
     await syncRoster();
   } catch (e) {
-    console.error("[roster] callsign format change: sync failed", e);
-    await query(`DELETE FROM meta WHERE key='callsign_format_v3_announced'`); // try again next visit
+    console.error("[roster] seat change: sync failed", e);
+    await query(`DELETE FROM meta WHERE key='seats_v4_announced'`); // try again next visit
     return;
   }
-  const { entries } = await buildRoster();
   let sent = 0;
   let failed = 0;
-  for (const e of entries) {
-    if (e.callsign === null) continue;
-    const old = fmtCallsignV2(e.callsign);
-    const ok = await sendDirectMessageV2(e.userId, [
+  for (const c of changed) {
+    const ok = await sendDirectMessageV2(c.user_id, [
       container([
         text(
           "## Callsign Update\n" +
-            "> Another change has been made by the **Overseers** — Florida Highway Patrol callsigns have been updated again. **Effective immediately.**\n\n" +
-            `Your callsign has been changed to **${fmtCallsign(e.callsign)}** (was ${old}), and your Discord nickname has been updated to match.`,
-        ),
-        divider(),
-        text(
-          "**FHP callsigns**\n" +
-            "`3##` — High Command\n" +
-            "`4##` — Supervisory Staff\n" +
-            "`5##` — Patrol Troopers\n" +
-            "`6##` — Probationary Troopers\n" +
-            "`K-##` — K-9 units",
+            "> The **Overseers** have added more **Patrol Operations Lieutenant** and **Field Supervisor** positions, so some callsigns have moved. **Effective immediately.**\n\n" +
+            `Your callsign has been changed to **${c.new}** (was ${c.old}), and your Discord nickname has been updated to match.`,
         ),
         text("-# Use your new callsign on the radio and in game from now on. Questions? Contact your supervisor."),
       ]),
     ]).catch(() => false);
     if (ok) sent++;
     else failed++;
-    await new Promise((r) => setTimeout(r, 400)); // stay under Discord's DM rate limits
+    await new Promise((r) => setTimeout(r, 400));
   }
-  await setMeta("callsign_format_v3_result", { sent, failed, at: new Date().toISOString() });
-  console.log(`[roster] callsign format change: DMed ${sent}, couldn't DM ${failed}`);
+  console.log(`[roster] seat change: DMed ${sent}, couldn't DM ${failed}`);
 }
 
 export async function syncIfStale() {

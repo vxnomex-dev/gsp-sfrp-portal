@@ -175,6 +175,23 @@ export const SCHEMA_SQL = [
   )`,
   `CREATE INDEX IF NOT EXISTS ia_cases_subject_idx ON ia_cases (subject_id)`,
   `CREATE INDEX IF NOT EXISTS ia_cases_report_idx ON ia_cases (report_id)`,
+  `CREATE TABLE IF NOT EXISTS nda_agreements (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    roblox TEXT,
+    signature TEXT NOT NULL,
+    signed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    status TEXT NOT NULL DEFAULT 'pending',
+    rep_id TEXT,
+    rep_name TEXT,
+    rep_signature TEXT,
+    rep_signed_at TIMESTAMPTZ,
+    void_reason TEXT,
+    version TEXT NOT NULL DEFAULT '2026-11'
+  )`,
+  `CREATE INDEX IF NOT EXISTS nda_user_idx ON nda_agreements (user_id)`,
   `CREATE TABLE IF NOT EXISTS deployments (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,
@@ -272,7 +289,7 @@ const DIVISIONS = [
       "Targets the most dangerous behavior on Florida's highways — excessive speed, street racing, and reckless and aggressive driving.",
     duties:
       "Speed enforcement on interstates and state roads\nStreet racing and reckless driving crackdowns\nUnmarked and stealth patrol operations\nHigh-visibility enforcement details",
-    commanderCallsign: 13,
+    commanderCallsign: 15,
   },
   {
     slug: "ia",
@@ -292,7 +309,7 @@ const DIVISIONS = [
       "Trained K-9 teams that support troopers with narcotics detection, suspect tracking and high-risk apprehensions.",
     duties:
       "Narcotics detection on traffic stops\nTracking suspects who flee on foot\nArea and building searches\nSupport on high-risk calls",
-    commanderCallsign: 12,
+    commanderCallsign: 14,
   },
   {
     slug: "ciu",
@@ -302,7 +319,7 @@ const DIVISIONS = [
       "Specialists in detecting and stopping the movement of narcotics, weapons and contraband along the state's highways.",
     duties:
       "Highway drug and contraband interdiction\nAdvanced vehicle search techniques\nStolen vehicle recovery\nCriminal indicator recognition on traffic stops",
-    commanderCallsign: 11,
+    commanderCallsign: 13,
   },
 ];
 
@@ -330,6 +347,66 @@ async function insertDivisions(client: Client) {
       [d.slug, d.name, d.abbreviation, d.summary, d.duties, i, d.commanderCallsign],
     );
   }
+}
+
+/**
+ * One-time: two more Patrol Lieutenant and two more Field Supervisory Sergeant seats. Moves every stored
+ * seat to the new layout and remembers whose callsign changed, so only they get a DM.
+ */
+export async function seatsV4(client: Client) {
+  const claimed = await client.query(
+    `INSERT INTO meta (key, value) VALUES ('seats_v4', now()::text) ON CONFLICT (key) DO NOTHING RETURNING key`,
+  );
+  if (!claimed.length) return;
+  const { migrateSeat, fmtCallsign } = await import("./callsign");
+  // The 3##/4##/5## numbers people had before this change
+  const oldGroups = [
+    { prefix: 3, first: 1, last: 13 },
+    { prefix: 4, first: 14, last: 20 },
+    { prefix: 5, first: 24, last: 30 },
+    { prefix: 6, first: 310, last: 400 },
+  ];
+  const fmtOld = (n: number) => {
+    const g = oldGroups.find((x) => n <= x.last) ?? oldGroups[3];
+    return String(g.prefix * 100 + Math.max(1, n - g.first + 1));
+  };
+
+  const people = (await client.query(`SELECT user_id, callsign FROM roster_callsigns`)) as { user_id: string; callsign: number }[];
+  // Move out of the way first (callsigns are unique), then into the new seats
+  await client.query(`UPDATE roster_callsigns SET callsign = callsign + 100000 WHERE callsign BETWEEN 11 AND 30`);
+  const changed: { user_id: string; old: string; new: string }[] = [];
+  for (const p of people) {
+    const old = Number(p.callsign);
+    if (old < 11 || old > 30) continue;
+    const seat = migrateSeat(old);
+    await client.query(`UPDATE roster_callsigns SET callsign=$1 WHERE user_id=$2`, [seat, p.user_id]);
+    if (fmtOld(old) !== fmtCallsign(seat)) changed.push({ user_id: p.user_id, old: fmtOld(old), new: fmtCallsign(seat) });
+  }
+
+  for (const col of ["old_callsign", "new_callsign"]) {
+    const rows = (await client.query(`SELECT id, ${col} AS c FROM promotions WHERE ${col} BETWEEN 11 AND 30`)) as { id: number; c: number }[];
+    for (const r of rows) await client.query(`UPDATE promotions SET ${col}=$1 WHERE id=$2`, [migrateSeat(Number(r.c)), r.id]);
+  }
+  const divs = (await client.query(`SELECT slug, commander_callsign AS c FROM divisions WHERE commander_callsign IS NOT NULL`)) as { slug: string; c: number }[];
+  for (const d of divs) await client.query(`UPDATE divisions SET commander_callsign=$1 WHERE slug=$2`, [migrateSeat(Number(d.c)), d.slug]);
+
+  const saved = (await client.query(`SELECT value FROM meta WHERE key='roster_assignments'`)) as { value: string }[];
+  if (saved[0]) {
+    const a = JSON.parse(saved[0].value) as { slots?: Record<string, string>; ranks?: Record<string, string> };
+    const slots: Record<string, string> = {};
+    for (const [k, v] of Object.entries(a.slots ?? {})) {
+      const n = Number(k);
+      slots[n >= 100 ? k : String(migrateSeat(n))] = v;
+    }
+    // The new seats take the same assignment as the seat they were added beside
+    if (slots["10"]) slots["11"] = slots["12"] = slots["10"];
+    if (slots["16"]) slots["17"] = slots["18"] = slots["16"];
+    await client.query(`UPDATE meta SET value=$1 WHERE key='roster_assignments'`, [JSON.stringify({ ...a, slots })]);
+  }
+  await client.query(
+    `INSERT INTO meta (key, value) VALUES ('seats_v4_changed', $1) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`,
+    [JSON.stringify(changed)],
+  );
 }
 
 /** One-time: replace the old divisions with ADU, Internal Affairs, Canine and CIU (all handpicked). */

@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Linkify } from "@/components/Linkify";
 import { fmtDate } from "@/lib/format";
 import { PrintButton } from "../../PrintButton";
+import { ndasFor, ndaRef } from "@/lib/nda";
 
 export default function EmployeeFilePage({ params }: PageProps<"/portal/ia/employees/[id]">) {
   return (
@@ -98,7 +99,8 @@ async function FileView({ params }: { params: PageProps<"/portal/ia/employees/[i
   if (!g.viewer) return g.denied;
   if (!/^\d{5,25}$/.test(id)) return <p className="text-muted-foreground">File not found.</p>;
 
-  const [file, roles] = await Promise.all([employeeFile(id), fetchGuildRoles().catch(() => [])]);
+  const [file, roles, ndas] = await Promise.all([employeeFile(id), fetchGuildRoles().catch(() => []), ndasFor(id).catch(() => [])]);
+  const nda = ndas.find((x) => x.status !== "void") ?? null;
   const roleName = new Map(roles.map((r) => [r.id, r.name.replace(/^\s*(FHP|GSP)\s*[|│:\-–—]\s*/i, "")]));
   const { current, cases, infractions, promotions } = file;
   const name = file.name ?? "Unknown employee";
@@ -130,6 +132,14 @@ async function FileView({ params }: { params: PageProps<"/portal/ia/employees/[i
               </span>
             )}
             <span className="text-muted-foreground">Discord ID {id}</span>
+            <Link
+              href={nda ? `/portal/nda/${nda.id}` : "/portal/nda"}
+              className={`rounded-sm px-2 py-0.5 font-display uppercase tracking-wide ${
+                nda?.status === "countersigned" ? "bg-navy/10 text-navy" : "bg-gold/25 text-[oklch(40%_0.1_70)]"
+              }`}
+            >
+              {nda ? `${ndaRef(nda.id)} · ${nda.status === "countersigned" ? "NDA signed" : "NDA awaiting countersign"}` : "No NDA on file"}
+            </Link>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">

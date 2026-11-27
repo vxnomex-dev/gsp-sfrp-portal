@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Scale, Car, Megaphone, Timer, CalendarOff, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
+import { FileSignature, Scale, Car, Megaphone, Timer, CalendarOff, ClipboardList, FileWarning, PencilRuler, ArrowRight, BadgeCheck, Bot, Users } from "lucide-react";
 import { guard } from "./guard";
 import { getCounts } from "@/lib/data";
 import { iaCounts } from "@/lib/ia";
+import { currentNdaFor, pendingNdaCount } from "@/lib/nda";
 import { avatarUrl } from "@/lib/discord";
 
 export default function PortalHome() {
@@ -18,7 +19,12 @@ async function Dashboard() {
   const g = await guard("portal", "/portal");
   if (!g.viewer) return g.denied;
   const { viewer } = g;
-  const [counts, ia] = await Promise.all([getCounts(), viewer.can("ia") ? iaCounts() : Promise.resolve({ open: 0, waiting: 0 })]);
+  const [counts, ia, ndaPending, myNda] = await Promise.all([
+    getCounts(),
+    viewer.can("ia") ? iaCounts() : Promise.resolve({ open: 0, waiting: 0 }),
+    viewer.can("applications") ? pendingNdaCount() : Promise.resolve(0),
+    currentNdaFor(viewer.uid).catch(() => null),
+  ]);
 
   const tiles = [
     {
@@ -32,6 +38,24 @@ async function Dashboard() {
       icon: CalendarOff,
       title: "Leave of Absence",
       body: viewer.can("shifts") ? "Request leave, and approve or deny requests." : "Request time away from the department.",
+    },
+    {
+      href: "/nda",
+      icon: FileSignature,
+      title: "Confidentiality Agreement",
+      body: myNda
+        ? myNda.status === "countersigned"
+          ? "Your signed agreement with the Patrol."
+          : "Signed — waiting for a Department Representative to countersign."
+        : "You haven't signed yet. Read and sign it here.",
+    },
+    viewer.can("applications") && {
+      href: "/portal/nda",
+      icon: FileSignature,
+      title: "Countersign Agreements",
+      body: "Countersign invitees' Confidentiality and Employment Agreements.",
+      count: ndaPending,
+      countLabel: "waiting",
     },
     {
       href: "/department",

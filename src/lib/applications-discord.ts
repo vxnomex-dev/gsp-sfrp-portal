@@ -179,8 +179,10 @@ export function acceptedDM(a: { id: number; discord_id: string }, dashboardChann
             ? `**1.** Head over to <#${dashboardChannelId}> (Cadet Dashboard) and read it over carefully.\n`
             : `**1.** Head over to the Cadet Dashboard channel and read it over carefully.\n`) +
           `**2.** Wait for a training to commence — keep an eye out for the announcement.\n` +
-          `**3.** When a training commences, attend it. Your **Field Training Instructor** will issue your callsign and you'll continue from there.`,
+          `**3.** When a training commences, attend it. Your **Field Training Instructor** will issue your callsign and you'll continue from there.\n` +
+          `**4.** Sign the **Confidentiality and Employment Agreement** using the button below.`,
       ),
+      { type: 1, components: [{ type: 2, style: 5, label: "Sign the agreement", url: `${env.baseUrl}/nda` }] },
       divider(true),
       text(`-# Welcome to the Patrol. • Florida Highway Patrol — ${site.community}`),
     ]),

@@ -1,5 +1,5 @@
 import "server-only";
-import { SCHEMA_SQL, divisionsV2, fhpReset, seedDefaults } from "./schema";
+import { SCHEMA_SQL, divisionsV2, fhpReset, seatsV4, seedDefaults } from "./schema";
 
 /**
  * Tiny database layer.
@@ -41,6 +41,7 @@ async function createClient(): Promise<Client> {
   await seedDefaults(client);
   await fhpReset(client);
   await divisionsV2(client);
+  await seatsV4(client);
   return client;
 }
 

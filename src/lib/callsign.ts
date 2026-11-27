@@ -6,11 +6,24 @@
  * Change here to change it everywhere (website, nicknames, bot messages).
  */
 const GROUPS = [
-  { prefix: 3, first: 1, last: 13 }, // Colonel → Lieutenants
-  { prefix: 4, first: 14, last: 20 }, // Sergeants, Corporals
-  { prefix: 5, first: 24, last: 30 }, // Troopers
-  { prefix: 6, first: 310, last: 400 }, // Probationary Troopers
+  { prefix: 3, first: 1, last: 15 }, // Colonel → Lieutenants (301–315)
+  { prefix: 4, first: 16, last: 24 }, // Sergeants, Corporals (401–409)
+  { prefix: 5, first: 31, last: 37 }, // Troopers (501–507)
+  { prefix: 6, first: 310, last: 400 }, // Probationary Troopers (601+)
 ];
+
+/**
+ * Seat layout change (Nov 27): two more Patrol Lieutenant seats (11, 12) and two more Field Supervisory
+ * Sergeant seats (17, 18). Maps a seat number from the old layout to the new one.
+ */
+export function migrateSeat(s: number) {
+  if (s >= 11 && s <= 13) return s + 2; // Division Lieutenants: CIU, Canine, ADU
+  if (s === 14) return 16; // Field Supervisory Sergeant
+  if (s >= 15 && s <= 17) return s + 4; // Division Sergeants: CIU, Canine, ADU
+  if (s >= 18 && s <= 20) return s + 4; // Corporals
+  if (s >= 24 && s <= 30) return s + 7; // Troopers
+  return s;
+}
 
 const groupOf = (n: number) => GROUPS.find((g) => n <= g.last) ?? GROUPS[GROUPS.length - 1];
 
@@ -22,21 +35,16 @@ export function fmtCallsign(n: number) {
 /** "401–404", or one callsign when the range is a single number. */
 export const fmtCallsignRange = (lo: number, hi: number) => (lo === hi ? fmtCallsign(lo) : `${fmtCallsign(lo)}–${fmtCallsign(hi)}`);
 
-/** The previous format (1###–4###), for "was …" in messages. */
-export function fmtCallsignV2(n: number) {
-  const tier = n <= 3 ? 1 : n <= 13 ? 2 : n <= 20 ? 3 : 4;
-  return `${tier}${String(n).padStart(3, "0")}`;
-}
 
 /** Reads a typed or nickname callsign back to its seat: "311" → 11, "401" → 14, "2011" → 11, "C-07" → 7. */
 export function parseCallsign(text: string): number | null {
   const t = text.trim();
   const old = /^C\s*-?\s*(\d{1,3})$/i.exec(t);
-  if (old) return Number(old[1]);
+  if (old) return migrateSeat(Number(old[1]));
   const digits = t.replace(/\D/g, "");
   if (!digits) return null;
   const n = Number(digits);
-  if (digits.length === 4 && n >= 1000 && n < 5000) return n % 1000; // 1###–4### format
+  if (digits.length === 4 && n >= 1000 && n < 5000) return migrateSeat(n % 1000); // 1###–4### format
   if (digits.length === 3) {
     const g = GROUPS.find((x) => x.prefix === Math.floor(n / 100));
     if (g && n % 100 > 0) return g.first + (n % 100) - 1;

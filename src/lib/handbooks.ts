@@ -157,7 +157,7 @@ export const HANDBOOKS = {
     channelId: "1565133881898704906",
     intro:
       "The Canine Unit puts trained K-9 teams on Florida's highways to find narcotics, track fleeing suspects and back up troopers on high-risk calls.\n\n" +
-      "The unit is led by the **Canine Unit Lieutenant (312)** and **Canine Unit Sergeant (403)**. Use the buttons below to read each part of the handbook.",
+      "The unit is led by the **Canine Unit Lieutenant (314)** and **Canine Unit Sergeant (405)**. Use the buttons below to read each part of the handbook.",
     footer: "Canine Unit · Florida Highway Patrol",
     sections: [
       {
@@ -168,7 +168,7 @@ export const HANDBOOKS = {
           "**Mission**\n" +
           "Support patrol troopers with narcotics detection, suspect tracking, area searches and — only when justified — apprehension.\n\n" +
           "**Chain of command**\n" +
-          "Canine Unit Lieutenant (312) → Canine Unit Sergeant (403) → K-9 handlers.\n\n" +
+          "Canine Unit Lieutenant (314) → Canine Unit Sergeant (405) → K-9 handlers.\n\n" +
           "**Membership**\n" +
           "- Handlers are selected by Canine Unit leadership.\n" +
           "- You must be off probation and in good standing with no active suspension.\n" +
@@ -263,7 +263,7 @@ export const HANDBOOKS = {
     channelId: "1565136145250132049",
     intro:
       "The Criminal Interdiction Unit (CIU) finds and stops narcotics, weapons, contraband and stolen vehicles moving along Florida's highways.\n\n" +
-      "The unit is led by the **Criminal Interdiction Lieutenant (311)** and **Criminal Interdiction Unit Sergeant (402)**. Use the buttons below to read each part of the handbook.",
+      "The unit is led by the **Criminal Interdiction Lieutenant (313)** and **Criminal Interdiction Unit Sergeant (404)**. Use the buttons below to read each part of the handbook.",
     footer: "Criminal Interdiction Unit · Florida Highway Patrol",
     sections: [
       {
@@ -274,7 +274,7 @@ export const HANDBOOKS = {
           "**Mission**\n" +
           "Use lawful traffic enforcement to detect and disrupt criminal activity on the highway — drug and weapon trafficking, smuggling and stolen vehicles.\n\n" +
           "**Chain of command**\n" +
-          "Criminal Interdiction Lieutenant (311) → Criminal Interdiction Unit Sergeant (402) → CIU troopers.\n\n" +
+          "Criminal Interdiction Lieutenant (313) → Criminal Interdiction Unit Sergeant (404) → CIU troopers.\n\n" +
           "**Membership**\n" +
           "- Members are selected by CIU leadership.\n" +
           "- You must be off probation and in good standing with no active suspension.\n" +
