@@ -34,6 +34,7 @@ export const CHANNEL_SLOTS = {
   transcripts: { label: "Ticket transcripts", hint: "A copy of every closed ticket.", category: false },
   cadetDashboard: { label: "Cadet dashboard", hint: "Accepted applicants are told to read this channel.", category: false },
   loa: { label: "Leave of absence requests", hint: "Where LOA requests are posted with Approve / Deny.", category: false },
+  ndas: { label: "Confidentiality agreements", hint: "Where signed agreements are posted for countersigning.", category: false },
   deployments: { label: "Deployments (optional)", hint: "Where /deployment posts. If not set, it posts in the channel the command is used in.", category: false },
   pressReleases: { label: "Press releases", hint: "Every press release published on the website is posted here.", category: false },
   shiftLogs: { label: "Shift logs (optional)", hint: "A short note whenever someone goes on or off duty.", category: false },
@@ -79,6 +80,7 @@ export async function getConfig(): Promise<DiscordConfig> {
   // Default LOA channel for the Florida Highway Patrol server until one is picked in Discord Setup
   if (!cfg.channels.loa && cfg.guildId) cfg.channels.loa = "1574221084390064188";
   if (!cfg.channels.pressReleases && cfg.guildId) cfg.channels.pressReleases = "1574412969541115995";
+  if (!cfg.channels.ndas && cfg.guildId) cfg.channels.ndas = "1575897990231625838";
   cache = { at: Date.now(), cfg };
   return cfg;
 }

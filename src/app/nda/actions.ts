@@ -45,6 +45,7 @@ export async function signNda(_: FormState, fd: FormData): Promise<FormState> {
     `INSERT INTO nda_agreements (user_id, username, full_name, roblox, signature, version) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
     [viewer.uid, viewer.username, fullName, roblox, signature, NDA_VERSION],
   );
+  after(() => import("@/lib/nda").then((m) => m.postNda(row!.id)).catch((e) => console.error("[nda] post failed", e)));
   after(() =>
     dm(
       viewer.uid,
@@ -72,6 +73,7 @@ export async function countersignNda(_: FormState, fd: FormData): Promise<FormSt
     [viewer.uid, viewer.displayName, signature, id],
   );
   if (!nda) return { message: "This agreement isn't waiting for a countersignature.", values };
+  after(() => import("@/lib/nda").then((m) => m.postNda(id)).catch((e) => console.error("[nda] update failed", e)));
   after(() =>
     dm(
       nda.user_id,
@@ -89,6 +91,8 @@ export async function voidNda(fd: FormData) {
   const viewer = await getViewer();
   if (!viewer || !viewer.can("applications")) throw new Error("Only Department Representatives can do this.");
   const reason = String(fd.get("reason") ?? "").trim().slice(0, 300) || null;
-  await query(`UPDATE nda_agreements SET status='void', void_reason=$1 WHERE id=$2`, [reason, Number(fd.get("id"))]);
+  const id = Number(fd.get("id"));
+  await query(`UPDATE nda_agreements SET status='void', void_reason=$1 WHERE id=$2`, [reason, id]);
+  after(() => import("@/lib/nda").then((m) => m.postNda(id)).catch((e) => console.error("[nda] update failed", e)));
   refresh();
 }

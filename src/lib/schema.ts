@@ -192,6 +192,8 @@ export const SCHEMA_SQL = [
     version TEXT NOT NULL DEFAULT '2026-11'
   )`,
   `CREATE INDEX IF NOT EXISTS nda_user_idx ON nda_agreements (user_id)`,
+  `ALTER TABLE nda_agreements ADD COLUMN IF NOT EXISTS channel_id TEXT`,
+  `ALTER TABLE nda_agreements ADD COLUMN IF NOT EXISTS message_id TEXT`,
   `CREATE TABLE IF NOT EXISTS deployments (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,
