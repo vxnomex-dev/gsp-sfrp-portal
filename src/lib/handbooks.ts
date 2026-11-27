@@ -72,6 +72,22 @@ export const HANDBOOKS = {
           "Interviews happen in private — a ticket or a private channel — never in public channels. Aim to finish each case within **7 days**. If it will take longer, update the notes and tell the complainant.",
       },
       {
+        id: "advisement",
+        label: "Interview Advisement",
+        body:
+          "## Interview Advisement\n" +
+          "Read this **word for word** to the trooper under investigation at the start of every investigation interview, after you start recording. Fill in the parts in brackets.\n\n" +
+          "> This is **[your rank and name]**, **[your callsign]**, of the Florida Highway Patrol Internal Affairs Division. Today is **[date]** and the time is **[time]**. This interview concerns Internal Affairs case **[IA-####]**.\n>\n" +
+          "> You are **[their rank and name]**, **[their callsign]**. You are the subject of an administrative investigation into an allegation of **[allegation]**.\n>\n" +
+          "> This is an administrative investigation. You are ordered to answer all questions fully and truthfully. Refusing to answer, giving a false or misleading statement, or leaving out relevant information is a separate violation of Department policy and may result in discipline, up to and including termination.\n>\n" +
+          "> This interview is being recorded. This investigation is confidential. You may not discuss it with anyone other than Internal Affairs, Human Resources or the Office of the Colonel — including other members of the Department.\n>\n" +
+          "> You may ask for a short break at any time. Do you understand everything I have just told you?\n\n" +
+          "**Then**\n" +
+          "- Wait for a clear **yes** before asking any questions. If they say no, read it again and explain the part they don't understand.\n" +
+          "- Write in the case notes that the advisement was read, and at what time.\n" +
+          "- Read it again at the start of every new interview, even with the same trooper.",
+      },
+      {
         id: "evidence",
         label: "Evidence",
         body:
