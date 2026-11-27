@@ -18,6 +18,7 @@ export const ROLE_SLOTS = {
   internalAffairs: { label: "Internal Affairs Division", hint: "Opens the Internal Affairs panel: cases, reports and employee files." },
   press: { label: "Press Release Team", hint: "Publishes press releases." },
   communityMember: { label: "Community Member", hint: "The only role kept when someone is terminated." },
+  onDuty: { label: "On Duty", hint: "Given while someone is on shift, removed when they go off duty." },
   loa: { label: "Leave of Absence", hint: "Given while someone's leave is approved, removed when it ends." },
   civilian: { label: "Civilian (verified)", hint: "Given when someone verifies their Roblox account through Dock." },
   blacklist: { label: "State Blacklist", hint: "Given with a Blacklist infraction. Can't apply on the website." },

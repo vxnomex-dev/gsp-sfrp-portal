@@ -2,7 +2,7 @@ import "server-only";
 import { query, queryOne } from "./db";
 import { getConfig } from "./config";
 import { container, text } from "./components";
-import { postChannelMessage } from "./discord-bot";
+import { addMemberRole, fetchGuildRoles, postChannelMessage, removeMemberRole } from "./discord-bot";
 import { RANKS, buildRoster, rankForRoles, type RankKey, type RosterEntry } from "./roster";
 import { fmtCallsign } from "./callsign";
 
@@ -70,11 +70,31 @@ async function logShift(textLine: string) {
   );
 }
 
+/** The On Duty role: the Discord Setup slot, else a role named "On Duty". */
+async function onDutyRole(): Promise<string | null> {
+  const cfg = await getConfig();
+  if (cfg.roles.onDuty) return cfg.roles.onDuty;
+  const roles = await fetchGuildRoles().catch(() => []);
+  return roles.find((r) => !r.managed && /^\W*on[\s-]*duty\W*$/i.test(r.name.replace(/^.*\|\s*/, "")))?.id ?? null;
+}
+
+/** Gives or removes the On Duty role. Never blocks going on/off duty if Discord refuses. */
+async function setOnDuty(userId: string, on: boolean) {
+  try {
+    const role = await onDutyRole();
+    if (!role) return;
+    if (on) await addMemberRole(userId, role);
+    else await removeMemberRole(userId, role);
+  } catch (e) {
+    console.error(`[shifts] couldn't ${on ? "give" : "remove"} the On Duty role`, e);
+  }
+}
+
 export async function startShift(userId: string, name: string) {
   const existing = await activeShift(userId);
   if (existing) return { ok: false as const, message: "You're already on duty." };
   const sh = (await queryOne<Shift>(`INSERT INTO shifts (user_id, user_name) VALUES ($1,$2) RETURNING *`, [userId, name]))!;
-  await logShift(`<@${userId}> is now **on duty**.`);
+  await Promise.all([setOnDuty(userId, true), logShift(`<@${userId}> is now **on duty**.`)]);
   return { ok: true as const, shift: sh };
 }
 
@@ -84,6 +104,7 @@ export async function endShift(userId: string, by?: { id: string; name: string }
     [userId, by?.id ?? null, by?.name ?? null],
   );
   if (!sh) return { ok: false as const, message: "Not on duty." };
+  await setOnDuty(userId, false);
   const length = fmtDuration(secondsOf(sh));
   await logShift(
     by && by.id !== userId
@@ -105,7 +126,9 @@ export async function wipeShifts(userIds: string[]) {
 }
 
 export async function deleteShift(id: number) {
-  return queryOne<Shift>(`DELETE FROM shifts WHERE id=$1 RETURNING *`, [id]);
+  const sh = await queryOne<Shift>(`DELETE FROM shifts WHERE id=$1 RETURNING *`, [id]);
+  if (sh && !sh.ended_at) await setOnDuty(sh.user_id, false);
+  return sh;
 }
 
 /* ------------------------------------------------------------------ */
