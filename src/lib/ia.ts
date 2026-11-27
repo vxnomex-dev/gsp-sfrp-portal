@@ -9,7 +9,7 @@ import type { Report } from "./data";
  * on record for a Discord account — kept even after someone is terminated or leaves the department).
  */
 
-import type { Finding } from "./ia-constants";
+import type { Attachment, Finding } from "./ia-constants";
 export * from "./ia-constants";
 const OPEN_FINDINGS: Finding[] = ["open", "investigating"];
 
@@ -32,6 +32,7 @@ export type IaCase = {
   witness_statements: string | null;
   evidence: string | null;
   recording_url: string | null;
+  attachments: Attachment[] | string | null;
   finding: Finding;
   outcome: string;
   outcome_details: string | null;
@@ -208,6 +209,7 @@ export type CaseInput = {
   witness_statements: string | null;
   evidence: string | null;
   recording_url: string | null;
+  attachments: string; // JSON array of Attachment
   finding: Finding;
   outcome: string;
   outcome_details: string | null;
@@ -232,6 +234,7 @@ const COLS = [
   "witness_statements",
   "evidence",
   "recording_url",
+  "attachments",
   "finding",
   "outcome",
   "outcome_details",
@@ -278,6 +281,18 @@ export async function updateCase(id: number, input: CaseInput) {
   );
   if (c) await syncReport(c);
   return c;
+}
+
+/** Attachments as an array, whether the database returned JSON or text. */
+export function attachmentsOf(c: Pick<IaCase, "attachments">): Attachment[] {
+  if (!c.attachments) return [];
+  if (Array.isArray(c.attachments)) return c.attachments;
+  try {
+    const v = JSON.parse(c.attachments);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
 }
 
 export const deleteCase = (id: number) => query(`DELETE FROM ia_cases WHERE id=$1`, [id]);

@@ -1,5 +1,11 @@
 /** Internal Affairs labels — shared by server pages and the case form. */
 
+/** A photo or video uploaded as evidence (stored privately in Vercel Blob). */
+export type Attachment = { url: string; pathname: string; name: string; type: string; size: number };
+
+export const MAX_ATTACHMENTS = 25;
+export const MAX_ATTACHMENT_BYTES = 200 * 1024 * 1024; // 200 MB (the free Blob plan holds 1 GB in total)
+
 export const iaRef = (id: number) => `IA-${String(id).padStart(4, "0")}`;
 
 export const FINDINGS = {

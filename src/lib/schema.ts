@@ -174,6 +174,7 @@ export const SCHEMA_SQL = [
     closed_at TIMESTAMPTZ
   )`,
   `CREATE INDEX IF NOT EXISTS ia_cases_subject_idx ON ia_cases (subject_id)`,
+  `ALTER TABLE ia_cases ADD COLUMN IF NOT EXISTS attachments JSONB`,
   `CREATE INDEX IF NOT EXISTS ia_cases_report_idx ON ia_cases (report_id)`,
   `CREATE TABLE IF NOT EXISTS nda_agreements (
     id SERIAL PRIMARY KEY,

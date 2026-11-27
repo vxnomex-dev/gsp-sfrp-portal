@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft, FolderOpen, FileWarning, Trash2 } from "lucide-react";
 import { guard } from "../../../guard";
-import { currentEmployees, getCase, iaRef } from "@/lib/ia";
+import { attachmentsOf, currentEmployees, getCase, iaRef } from "@/lib/ia";
 import { reportRef } from "@/lib/forms";
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtDate } from "@/lib/format";
@@ -37,7 +37,9 @@ async function CaseDetail({
     options.unshift({ id: c.subject_id, label: `${[c.subject_callsign, c.subject_name].filter(Boolean).join(" | ")} — no longer on the roster` });
   }
   const initial: Record<string, string> = Object.fromEntries(
-    Object.entries(c).map(([k, v]) => [k, v === null || v === undefined ? "" : String(v)]),
+    Object.entries(c)
+      .filter(([k]) => k !== "attachments")
+      .map(([k, v]) => [k, v === null || v === undefined ? "" : String(v)]),
   );
 
   return (
@@ -59,7 +61,7 @@ async function CaseDetail({
             </p>
           </div>
           {sp.created && <Alert tone="success">Case opened and added to {c.subject_name}&apos;s employee file.</Alert>}
-          <CaseEditor employees={options} initial={initial} caseId={c.id} reportLabel={c.report_id ? reportRef(c.report_id) : undefined} />
+          <CaseEditor employees={options} initial={initial} caseId={c.id} attachments={attachmentsOf(c)} reportLabel={c.report_id ? reportRef(c.report_id) : undefined} />
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-48 lg:self-start">

@@ -54,6 +54,33 @@ export async function saveIaCase(_: FormState, fd: FormData): Promise<FormState>
   const recording = opt(values.recording_url, 500);
   if (recording && !/^https?:\/\//i.test(recording)) errors.recording_url = "Paste the full link, starting with https://";
   if (!ia.isFinding(values.finding)) errors.finding = "Choose a finding.";
+
+  // Uploaded photos / videos (already in Blob storage; only keep ones that look like ours)
+  let attachments: import("@/lib/ia").Attachment[] = [];
+  try {
+    const raw = JSON.parse(values.attachments || "[]") as unknown[];
+    attachments = raw
+      .filter((a): a is import("@/lib/ia").Attachment => {
+        if (!a || typeof a !== "object") return false;
+        const x = a as Record<string, unknown>;
+        return (
+          typeof x.url === "string" &&
+          /^https:\/\/[a-z0-9-]+\.(private|public)\.blob\.vercel-storage\.com\//i.test(x.url) &&
+          typeof x.type === "string" &&
+          /^(image|video)\//.test(x.type)
+        );
+      })
+      .slice(0, ia.MAX_ATTACHMENTS)
+      .map((a) => ({
+        url: a.url,
+        pathname: String(a.pathname ?? "").slice(0, 300),
+        name: String(a.name ?? "file").slice(0, 120),
+        type: a.type,
+        size: Number(a.size) || 0,
+      }));
+  } catch {
+    errors.attachments = "Couldn't read the uploaded files. Remove them and try again.";
+  }
   const outcome = (ia.OUTCOMES as readonly string[]).includes(values.outcome) ? values.outcome : "Pending";
 
   if (Object.keys(errors).length) return { errors, values, message: "Please fix the highlighted fields." };
@@ -76,6 +103,7 @@ export async function saveIaCase(_: FormState, fd: FormData): Promise<FormState>
     witness_statements: opt(values.witness_statements, 5000),
     evidence: opt(values.evidence, 3000),
     recording_url: recording,
+    attachments: JSON.stringify(attachments),
     finding: values.finding as import("@/lib/ia").Finding,
     outcome,
     outcome_details: opt(values.outcome_details, 500),

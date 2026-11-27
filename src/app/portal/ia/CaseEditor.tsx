@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { saveIaCase } from "./actions";
 import type { FormState } from "@/lib/forms";
-import { CASE_CATEGORIES, FINDINGS, FINDING_HELP, OUTCOMES, type Finding } from "@/lib/ia-constants";
+import { CASE_CATEGORIES, FINDINGS, FINDING_HELP, OUTCOMES, type Attachment, type Finding } from "@/lib/ia-constants";
+import { EvidenceUploader } from "./EvidenceUploader";
 import { Alert, SubmitButton, TextArea, TextField } from "@/components/ui";
 
 type Employee = { id: string; label: string };
@@ -67,11 +68,13 @@ export function CaseEditor({
   initial,
   caseId,
   reportLabel,
+  attachments = [],
 }: {
   employees: Employee[];
   initial: Record<string, string>;
   caseId?: number;
   reportLabel?: string;
+  attachments?: Attachment[];
 }) {
   const [state, action] = useActionState<FormState, FormData>(saveIaCase, {});
   const v = { ...initial, ...(state.ok ? {} : (state.values ?? {})) };
@@ -158,13 +161,15 @@ export function CaseEditor({
       </Section>
 
       <Section title="Evidence">
+        <EvidenceUploader caseId={caseId} initial={attachments} />
+        {e.attachments && <p className="text-sm text-destructive">{e.attachments}</p>}
         <TextArea
           name="evidence"
-          label="Evidence"
+          label="Evidence links"
           rows={4}
           defaultValue={v.evidence}
           maxLength={3000}
-          hint="Clips, screenshots and links — one per line."
+          hint="Medal, YouTube or other links — one per line."
         />
         <TextField
           name="recording_url"

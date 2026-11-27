@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft, FilePlus2, UserRound } from "lucide-react";
 import { guard } from "../../../guard";
-import { employeeFile, iaRef, FINDINGS, type IaCase } from "@/lib/ia";
+import { attachmentsOf, employeeFile, iaRef, FINDINGS, type IaCase } from "@/lib/ia";
 import { reportRef } from "@/lib/forms";
 import { fetchGuildRoles } from "@/lib/discord-bot";
 import { fmtCallsign } from "@/lib/callsign";
@@ -75,7 +75,23 @@ function CaseCard({ c }: { c: IaCase }) {
         <Field label="Reporter's statement" wide>{orNone(c.complainant_statement)}</Field>
         <Field label="Trooper's statement" wide>{orNone(c.trooper_statement)}</Field>
         {c.witness_statements && <Field label="Witness statements" wide>{c.witness_statements}</Field>}
-        <Field label="Evidence" wide>{c.evidence ? <Linkify text={c.evidence} /> : orNone(null)}</Field>
+        <Field label="Evidence" wide>
+          {attachmentsOf(c).length > 0 && (
+            <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {attachmentsOf(c).map((a, i) =>
+                a.type.startsWith("video/") ? (
+                  <video key={i} src={`/api/ia/evidence/${c.id}/${i}`} controls preload="metadata" className="aspect-video w-full rounded-sm bg-black" />
+                ) : (
+                  <a key={i} href={`/api/ia/evidence/${c.id}/${i}`} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/api/ia/evidence/${c.id}/${i}`} alt={a.name} className="aspect-video w-full rounded-sm bg-black/80 object-contain" />
+                  </a>
+                ),
+              )}
+            </div>
+          )}
+          {c.evidence ? <Linkify text={c.evidence} /> : attachmentsOf(c).length ? null : orNone(null)}
+        </Field>
         <Field label="Craig recording" wide>
           {c.recording_url ? (
             <a href={c.recording_url} target="_blank" rel="noreferrer noopener" className="break-all text-navy underline">
