@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { FileVideo, ImagePlus, Loader2, X } from "lucide-react";
 import { MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, type Attachment } from "@/lib/ia-constants";
@@ -18,9 +18,20 @@ export function EvidenceUploader({ caseId, initial }: { caseId?: number; initial
   const [error, setError] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const [ready, setReady] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch("/api/ia/upload")
+      .then((r) => r.json())
+      .then((d: { ready: boolean }) => setReady(d.ready))
+      .catch(() => setReady(null));
+  }, []);
 
   async function addFiles(files: FileList | File[]) {
     setError(null);
+    if (ready === false) {
+      setError("File uploads aren't set up yet — the website needs a private Blob store connected in Vercel.");
+      return;
+    }
     const list = [...files].filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
     if (list.length < [...files].length) setError("Only photos and videos can be attached.");
     for (const file of list) {
@@ -49,7 +60,12 @@ export function EvidenceUploader({ caseId, initial }: { caseId?: number; initial
           },
         ]);
       } catch (e) {
-        setError(`Couldn't upload ${file.name}: ${(e as Error).message}`);
+        const msg = (e as Error).message;
+        setError(
+          /client token/i.test(msg)
+            ? `Couldn't upload ${file.name}: the website refused the upload (storage not connected, or you're logged out).`
+            : `Couldn't upload ${file.name}: ${msg}`,
+        );
       } finally {
         setUploading((u) => u.filter((x) => x.key !== key));
       }
@@ -93,7 +109,9 @@ export function EvidenceUploader({ caseId, initial }: { caseId?: number; initial
         <ImagePlus className="text-navy" size={26} />
         <span className="font-display uppercase tracking-wide text-navy">Attach photos or videos</span>
         <span className="text-sm text-muted-foreground">
-          Click or drag files here · up to {fmtSize(MAX_ATTACHMENT_BYTES)} each · stored privately for Internal Affairs only
+          {ready === false
+            ? "Uploads aren't set up yet — storage needs to be connected in Vercel"
+            : `Click or drag files here · up to ${fmtSize(MAX_ATTACHMENT_BYTES)} each · stored privately for Internal Affairs only`}
         </span>
       </button>
 

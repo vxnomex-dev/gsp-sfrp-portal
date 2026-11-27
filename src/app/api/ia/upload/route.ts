@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { getViewer } from "@/lib/session";
 import { MAX_ATTACHMENT_BYTES } from "@/lib/ia-constants";
 
+/** Lets the upload box know whether storage is connected. */
+export function GET() {
+  return NextResponse.json({ ready: Boolean(process.env.BLOB_READ_WRITE_TOKEN) });
+}
+
 /** Hands Internal Affairs a short-lived token so the browser can upload evidence straight to private Blob storage. */
 export async function POST(request: Request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
