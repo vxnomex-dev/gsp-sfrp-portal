@@ -523,6 +523,17 @@ export const SOP: SopSection[] = [
             title: "Post-Transfer Restrictions",
             body: [
               "• Members are subject to an immediate one-week promotion cooldown following a completed transfer.",
+            ],
+          },
+          {
+            num: "6.04",
+            title: "Leaving or Resigning",
+            body: [
+              "• Members who leave or resign from a department are on a 7-day cooldown before they may join another department.",
+              {
+                lead: "Final reminder:",
+                text: "Failure to follow these transfer guidelines will result in a department blacklist.",
+              },
               { lead: "Issued by:", text: "Department Oversight — A. Caldwell" },
             ],
           },
